@@ -113,23 +113,17 @@ export const Route = createFileRoute("/api/chat")({
         const gateway = createLovableAiGatewayProvider(key);
         const model = gateway("google/gemini-3-flash-preview");
 
-        const contextMsg = {
-          role: "system" as const,
-          content: `RESUME_STATE (current draft):\n${JSON.stringify(resumeState, null, 2)}`,
-        };
+        const systemPrompt = `${SYSTEM_PROMPT}\n\nRESUME_STATE (current draft):\n${JSON.stringify(resumeState, null, 2)}`;
 
         try {
           const { output } = await generateText({
             model,
             output: Output.object({ schema: ResponseSchema }),
-            messages: [
-              { role: "system", content: SYSTEM_PROMPT },
-              contextMsg,
-              ...history.map((m) => ({
-                role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
-                content: String(m.content ?? ""),
-              })),
-            ],
+            system: systemPrompt,
+            messages: history.map((m) => ({
+              role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+              content: String(m.content ?? ""),
+            })),
           });
 
           return Response.json(output);
