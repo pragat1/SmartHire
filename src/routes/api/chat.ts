@@ -129,6 +129,7 @@ export const Route = createFileRoute("/api/chat")({
           return Response.json(output);
         } catch (error) {
           if (NoObjectGeneratedError.isInstance(error)) {
+            console.error("[chat] NoObjectGeneratedError:", error.message, "\ntext:", error.text?.slice(0, 800));
             return Response.json(
               {
                 reply:
@@ -144,6 +145,7 @@ export const Route = createFileRoute("/api/chat")({
               { status: 200 },
             );
           }
+          console.error("[chat] error:", error);
           const message = error instanceof Error ? error.message : "Unknown error";
           return new Response(message, { status: 500 });
         }
