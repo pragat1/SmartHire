@@ -29,6 +29,11 @@ import {
   Loader2,
   ArrowUpRight,
 } from "lucide-react";
+import {
+  RewriteButton,
+  AchievementGenerator,
+  ProjectGeneratorCard,
+} from "@/components/ai-tools";
 
 export const Route = createFileRoute("/")({
   component: SmartHireApp,
