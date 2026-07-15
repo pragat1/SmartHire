@@ -1117,8 +1117,17 @@ function ResumePreview({
                   <div key={p.name} className="mb-3 animate-fade-in">
                     <div className="flex items-baseline justify-between gap-2">
                       <div className="text-[13px] font-semibold">{p.name}</div>
-                      <div className="text-[11px] font-semibold text-success">
-                        Quality {Math.round(p.quality)}%
+                      <div className="flex items-center gap-1.5">
+                        {p.description && (
+                          <RewriteButton
+                            text={p.description}
+                            section="project"
+                            onAccept={(t) => onUpdateProjectDescription(p.name, t)}
+                          />
+                        )}
+                        <div className="text-[11px] font-semibold text-success">
+                          Quality {Math.round(p.quality)}%
+                        </div>
                       </div>
                     </div>
                     <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-2">
