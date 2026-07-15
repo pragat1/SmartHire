@@ -1268,10 +1268,12 @@ function ChangeWrap({
 function Section({
   title,
   icon: Icon,
+  action,
   children,
 }: {
   title: string;
   icon?: React.ComponentType<{ className?: string }>;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -1280,6 +1282,7 @@ function Section({
         {Icon && <Icon className="h-3.5 w-3.5 text-primary" />}
         <h3 className="text-[11px] font-bold uppercase tracking-widest text-primary">{title}</h3>
         <div className="h-px flex-1 bg-border" />
+        {action}
       </div>
       {children}
     </div>
