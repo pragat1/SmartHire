@@ -1066,7 +1066,18 @@ function ResumePreview({
           </ChangeWrap>
 
           <ChangeWrap id="section-summary" active={changed(["summary"])} label="Updated">
-            <Section title="Summary">
+            <Section
+              title="Summary"
+              action={
+                resume.summary ? (
+                  <RewriteButton
+                    text={resume.summary}
+                    section="summary"
+                    onAccept={onUpdateSummary}
+                  />
+                ) : null
+              }
+            >
               <p className="text-[13px] leading-relaxed text-foreground/85">
                 {resume.summary || (
                   <span className="italic text-muted-foreground">
