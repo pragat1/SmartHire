@@ -827,12 +827,20 @@ function RightPanel({
   template,
   setTemplate,
   recentlyChanged,
+  onUpdateSummary,
+  onUpdateProjectDescription,
+  onAddAchievement,
+  onAddGeneratedProject,
 }: {
   resume: Resume;
   score: ReturnType<typeof computeScore>;
   template: string;
   setTemplate: (t: string) => void;
   recentlyChanged: Set<string>;
+  onUpdateSummary: (t: string) => void;
+  onUpdateProjectDescription: (name: string, t: string) => void;
+  onAddAchievement: (t: string) => void;
+  onAddGeneratedProject: (p: { name: string; description: string; tech: string[] }) => void;
 }) {
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-5">
@@ -840,7 +848,22 @@ function RightPanel({
         <ScoreCard score={score} />
         <SuggestionsCard />
       </div>
-      <ResumePreview resume={resume} template={template} recentlyChanged={recentlyChanged} />
+      <ResumePreview
+        resume={resume}
+        template={template}
+        recentlyChanged={recentlyChanged}
+        onUpdateSummary={onUpdateSummary}
+        onUpdateProjectDescription={onUpdateProjectDescription}
+      />
+      <ProjectGeneratorCard
+        skills={resume.skills}
+        role={resume.role}
+        existingProjects={resume.projects.map((p) => p.name)}
+        onAddProject={(p) =>
+          onAddGeneratedProject({ name: p.name, description: p.description, tech: p.tech })
+        }
+      />
+      <AchievementGenerator onAdd={onAddAchievement} />
       <TemplateGallery template={template} setTemplate={setTemplate} />
     </section>
   );
