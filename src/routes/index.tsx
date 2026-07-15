@@ -368,6 +368,42 @@ function SmartHireApp() {
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const updateSummary = useCallback(
+    (text: string) => {
+      setResume((r) => ({ ...r, summary: text }));
+      flashChange(["summary"]);
+    },
+    [flashChange],
+  );
+
+  const updateProjectDescription = useCallback(
+    (name: string, text: string) => {
+      setResume((r) => ({
+        ...r,
+        projects: r.projects.map((p) => (p.name === name ? { ...p, description: text } : p)),
+      }));
+      flashChange(["projects"]);
+    },
+    [flashChange],
+  );
+
+  const addAchievement = useCallback(
+    (text: string) => {
+      setResume((r) => ({ ...r, achievements: Array.from(new Set([...r.achievements, text])) }));
+      flashChange(["achievements"]);
+      setCompletedSections((prev) => Array.from(new Set([...prev, "achievements" as SectionKey])));
+    },
+    [flashChange],
+  );
+
+  const addGeneratedProject = useCallback(
+    (p: { name: string; description: string; tech: string[] }) => {
+      applyPatch({ add_project: p });
+      setCompletedSections((prev) => Array.from(new Set([...prev, "projects" as SectionKey])));
+    },
+    [applyPatch],
+  );
+
   return (
     <div className="min-h-screen w-full text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1700px]">
@@ -397,6 +433,10 @@ function SmartHireApp() {
             template={template}
             setTemplate={setTemplate}
             recentlyChanged={recentlyChanged}
+            onUpdateSummary={updateSummary}
+            onUpdateProjectDescription={updateProjectDescription}
+            onAddAchievement={addAchievement}
+            onAddGeneratedProject={addGeneratedProject}
           />
         </main>
       </div>
