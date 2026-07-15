@@ -29,6 +29,11 @@ import {
   Loader2,
   ArrowUpRight,
 } from "lucide-react";
+import {
+  RewriteButton,
+  AchievementGenerator,
+  ProjectGeneratorCard,
+} from "@/components/ai-tools";
 
 export const Route = createFileRoute("/")({
   component: SmartHireApp,
@@ -363,6 +368,42 @@ function SmartHireApp() {
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const updateSummary = useCallback(
+    (text: string) => {
+      setResume((r) => ({ ...r, summary: text }));
+      flashChange(["summary"]);
+    },
+    [flashChange],
+  );
+
+  const updateProjectDescription = useCallback(
+    (name: string, text: string) => {
+      setResume((r) => ({
+        ...r,
+        projects: r.projects.map((p) => (p.name === name ? { ...p, description: text } : p)),
+      }));
+      flashChange(["projects"]);
+    },
+    [flashChange],
+  );
+
+  const addAchievement = useCallback(
+    (text: string) => {
+      setResume((r) => ({ ...r, achievements: Array.from(new Set([...r.achievements, text])) }));
+      flashChange(["achievements"]);
+      setCompletedSections((prev) => Array.from(new Set([...prev, "achievements" as SectionKey])));
+    },
+    [flashChange],
+  );
+
+  const addGeneratedProject = useCallback(
+    (p: { name: string; description: string; tech: string[] }) => {
+      applyPatch({ add_project: p });
+      setCompletedSections((prev) => Array.from(new Set([...prev, "projects" as SectionKey])));
+    },
+    [applyPatch],
+  );
+
   return (
     <div className="min-h-screen w-full text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1700px]">
@@ -392,6 +433,10 @@ function SmartHireApp() {
             template={template}
             setTemplate={setTemplate}
             recentlyChanged={recentlyChanged}
+            onUpdateSummary={updateSummary}
+            onUpdateProjectDescription={updateProjectDescription}
+            onAddAchievement={addAchievement}
+            onAddGeneratedProject={addGeneratedProject}
           />
         </main>
       </div>
@@ -782,12 +827,20 @@ function RightPanel({
   template,
   setTemplate,
   recentlyChanged,
+  onUpdateSummary,
+  onUpdateProjectDescription,
+  onAddAchievement,
+  onAddGeneratedProject,
 }: {
   resume: Resume;
   score: ReturnType<typeof computeScore>;
   template: string;
   setTemplate: (t: string) => void;
   recentlyChanged: Set<string>;
+  onUpdateSummary: (t: string) => void;
+  onUpdateProjectDescription: (name: string, t: string) => void;
+  onAddAchievement: (t: string) => void;
+  onAddGeneratedProject: (p: { name: string; description: string; tech: string[] }) => void;
 }) {
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-5">
@@ -795,7 +848,22 @@ function RightPanel({
         <ScoreCard score={score} />
         <SuggestionsCard />
       </div>
-      <ResumePreview resume={resume} template={template} recentlyChanged={recentlyChanged} />
+      <ResumePreview
+        resume={resume}
+        template={template}
+        recentlyChanged={recentlyChanged}
+        onUpdateSummary={onUpdateSummary}
+        onUpdateProjectDescription={onUpdateProjectDescription}
+      />
+      <ProjectGeneratorCard
+        skills={resume.skills}
+        role={resume.role}
+        existingProjects={resume.projects.map((p) => p.name)}
+        onAddProject={(p) =>
+          onAddGeneratedProject({ name: p.name, description: p.description, tech: p.tech })
+        }
+      />
+      <AchievementGenerator onAdd={onAddAchievement} />
       <TemplateGallery template={template} setTemplate={setTemplate} />
     </section>
   );
@@ -918,10 +986,14 @@ function ResumePreview({
   resume,
   template,
   recentlyChanged,
+  onUpdateSummary,
+  onUpdateProjectDescription,
 }: {
   resume: Resume;
   template: string;
   recentlyChanged: Set<string>;
+  onUpdateSummary: (t: string) => void;
+  onUpdateProjectDescription: (name: string, t: string) => void;
 }) {
   const displayName = resume.name || "Your Name";
   const changed = (keys: string[]) => keys.some((k) => recentlyChanged.has(k));
@@ -994,7 +1066,18 @@ function ResumePreview({
           </ChangeWrap>
 
           <ChangeWrap id="section-summary" active={changed(["summary"])} label="Updated">
-            <Section title="Summary">
+            <Section
+              title="Summary"
+              action={
+                resume.summary ? (
+                  <RewriteButton
+                    text={resume.summary}
+                    section="summary"
+                    onAccept={onUpdateSummary}
+                  />
+                ) : null
+              }
+            >
               <p className="text-[13px] leading-relaxed text-foreground/85">
                 {resume.summary || (
                   <span className="italic text-muted-foreground">
@@ -1034,8 +1117,17 @@ function ResumePreview({
                   <div key={p.name} className="mb-3 animate-fade-in">
                     <div className="flex items-baseline justify-between gap-2">
                       <div className="text-[13px] font-semibold">{p.name}</div>
-                      <div className="text-[11px] font-semibold text-success">
-                        Quality {Math.round(p.quality)}%
+                      <div className="flex items-center gap-1.5">
+                        {p.description && (
+                          <RewriteButton
+                            text={p.description}
+                            section="project"
+                            onAccept={(t) => onUpdateProjectDescription(p.name, t)}
+                          />
+                        )}
+                        <div className="text-[11px] font-semibold text-success">
+                          Quality {Math.round(p.quality)}%
+                        </div>
                       </div>
                     </div>
                     <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-2">
@@ -1185,10 +1277,12 @@ function ChangeWrap({
 function Section({
   title,
   icon: Icon,
+  action,
   children,
 }: {
   title: string;
   icon?: React.ComponentType<{ className?: string }>;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -1197,6 +1291,7 @@ function Section({
         {Icon && <Icon className="h-3.5 w-3.5 text-primary" />}
         <h3 className="text-[11px] font-bold uppercase tracking-widest text-primary">{title}</h3>
         <div className="h-px flex-1 bg-border" />
+        {action}
       </div>
       {children}
     </div>
