@@ -986,10 +986,14 @@ function ResumePreview({
   resume,
   template,
   recentlyChanged,
+  onUpdateSummary,
+  onUpdateProjectDescription,
 }: {
   resume: Resume;
   template: string;
   recentlyChanged: Set<string>;
+  onUpdateSummary: (t: string) => void;
+  onUpdateProjectDescription: (name: string, t: string) => void;
 }) {
   const displayName = resume.name || "Your Name";
   const changed = (keys: string[]) => keys.some((k) => recentlyChanged.has(k));
