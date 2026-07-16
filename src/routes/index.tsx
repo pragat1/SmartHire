@@ -452,7 +452,9 @@ function SmartHireApp() {
             onUpdateProjectDescription={updateProjectDescription}
             onAddAchievement={addAchievement}
             onAddGeneratedProject={addGeneratedProject}
+            onAddSkill={addSkill}
           />
+
         </main>
       </div>
       {completed && <CelebrationModal score={score} onClose={() => setCompleted(false)} />}
