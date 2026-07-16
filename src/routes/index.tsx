@@ -848,6 +848,7 @@ function RightPanel({
   onUpdateProjectDescription,
   onAddAchievement,
   onAddGeneratedProject,
+  onAddSkill,
 }: {
   resume: Resume;
   score: ReturnType<typeof computeScore>;
@@ -858,6 +859,7 @@ function RightPanel({
   onUpdateProjectDescription: (name: string, t: string) => void;
   onAddAchievement: (t: string) => void;
   onAddGeneratedProject: (p: { name: string; description: string; tech: string[] }) => void;
+  onAddSkill: (skill: string) => void;
 }) {
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-5">
@@ -881,10 +883,21 @@ function RightPanel({
         }
       />
       <AchievementGenerator onAdd={onAddAchievement} />
+
+      <AnalysisSectionHeader />
+      <div className="grid gap-5 xl:grid-cols-2">
+        <AtsHeatmap resume={resume} onAddSkill={onAddSkill} />
+        <ResumeRadar resume={resume} />
+        <JobMatchSimulator resume={resume} />
+        <ResumeAnalytics resume={resume} />
+      </div>
+      <MissingSectionsCard resume={resume} />
+
       <TemplateGallery template={template} setTemplate={setTemplate} />
     </section>
   );
 }
+
 
 // ---------- Score card ----------
 function ScoreCard({ score }: { score: ReturnType<typeof computeScore> }) {
