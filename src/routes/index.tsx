@@ -34,6 +34,15 @@ import {
   AchievementGenerator,
   ProjectGeneratorCard,
 } from "@/components/ai-tools";
+import {
+  AnalysisSectionHeader,
+  AtsHeatmap,
+  ResumeRadar,
+  JobMatchSimulator,
+  ResumeAnalytics,
+  MissingSectionsCard,
+} from "@/components/analysis-tools";
+
 
 export const Route = createFileRoute("/")({
   component: SmartHireApp,
