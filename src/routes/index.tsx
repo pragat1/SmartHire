@@ -404,6 +404,21 @@ function SmartHireApp() {
     [applyPatch],
   );
 
+  const addSkill = useCallback(
+    (skill: string) => {
+      const clean = skill.trim();
+      if (!clean) return;
+      setResume((r) =>
+        r.skills.some((s) => s.toLowerCase() === clean.toLowerCase())
+          ? r
+          : { ...r, skills: [...r.skills, clean] },
+      );
+      flashChange(["skills"]);
+    },
+    [flashChange],
+  );
+
+
   return (
     <div className="min-h-screen w-full text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1700px]">
