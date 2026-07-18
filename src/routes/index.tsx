@@ -464,7 +464,7 @@ function SmartHireApp() {
     [resume, versions, pushHistory],
   );
 
-
+  return (
     <div className="min-h-screen w-full text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1700px]">
         <JourneySidebar
@@ -498,6 +498,12 @@ function SmartHireApp() {
             onAddAchievement={addAchievement}
             onAddGeneratedProject={addGeneratedProject}
             onAddSkill={addSkill}
+            versions={versions.versions}
+            onSaveVersion={saveVersion}
+            onRestoreVersion={restoreVersion}
+            onDeleteVersion={versions.remove}
+            history={history}
+            onClearHistory={() => setHistory([])}
           />
 
         </main>
