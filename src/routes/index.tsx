@@ -192,8 +192,14 @@ function SmartHireApp() {
   const [recentlyChanged, setRecentlyChanged] = useState<Set<string>>(new Set());
   const [completed, setCompleted] = useState(false);
   const [template, setTemplate] = useState("Minimal");
+  const [history, setHistory] = useState<HistoryEvent[]>([]);
+  const versions = useResumeVersions<Resume>();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const pushHistory = useCallback((text: string) => {
+    setHistory((h) => [...h, { id: uid(), at: Date.now(), text }].slice(-80));
+  }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
