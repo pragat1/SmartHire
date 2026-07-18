@@ -312,9 +312,11 @@ function SmartHireApp() {
         }
         return next;
       });
-      flashChange(Array.from(new Set(changed)));
+      const uniq = Array.from(new Set(changed));
+      flashChange(uniq);
+      if (uniq.length) pushHistory(`Updated: ${uniq.join(", ")}`);
     },
-    [flashChange],
+    [flashChange, pushHistory],
   );
 
   async function sendMessage(text: string) {
