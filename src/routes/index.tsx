@@ -42,6 +42,15 @@ import {
   ResumeAnalytics,
   MissingSectionsCard,
 } from "@/components/analysis-tools";
+import {
+  ResumeVersionsCard,
+  useResumeVersions,
+  CareerGapDetector,
+  InterviewCoach,
+  HistoryTimeline,
+  type HistoryEvent,
+  type WorkspaceResume,
+} from "@/components/workspace-tools";
 
 
 export const Route = createFileRoute("/")({
@@ -183,8 +192,14 @@ function SmartHireApp() {
   const [recentlyChanged, setRecentlyChanged] = useState<Set<string>>(new Set());
   const [completed, setCompleted] = useState(false);
   const [template, setTemplate] = useState("Minimal");
+  const [history, setHistory] = useState<HistoryEvent[]>([]);
+  const versions = useResumeVersions<Resume>();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const pushHistory = useCallback((text: string) => {
+    setHistory((h) => [...h, { id: uid(), at: Date.now(), text }].slice(-80));
+  }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -297,9 +312,11 @@ function SmartHireApp() {
         }
         return next;
       });
-      flashChange(Array.from(new Set(changed)));
+      const uniq = Array.from(new Set(changed));
+      flashChange(uniq);
+      if (uniq.length) pushHistory(`Updated: ${uniq.join(", ")}`);
     },
-    [flashChange],
+    [flashChange, pushHistory],
   );
 
   async function sendMessage(text: string) {
@@ -427,6 +444,25 @@ function SmartHireApp() {
     [flashChange],
   );
 
+  const restoreVersion = useCallback(
+    (snap: Resume) => {
+      setResume(snap);
+      flashChange([
+        "name", "email", "phone", "github", "linkedin", "portfolio", "location", "role",
+        "summary", "skills", "projects", "experience", "certifications", "achievements",
+      ]);
+      pushHistory("Restored a saved version");
+    },
+    [flashChange, pushHistory],
+  );
+
+  const saveVersion = useCallback(
+    (label: string) => {
+      versions.save(label, resume);
+      pushHistory(`Saved version "${label || "Current draft"}"`);
+    },
+    [resume, versions, pushHistory],
+  );
 
   return (
     <div className="min-h-screen w-full text-foreground">
@@ -462,6 +498,12 @@ function SmartHireApp() {
             onAddAchievement={addAchievement}
             onAddGeneratedProject={addGeneratedProject}
             onAddSkill={addSkill}
+            versions={versions.versions}
+            onSaveVersion={saveVersion}
+            onRestoreVersion={restoreVersion}
+            onDeleteVersion={versions.remove}
+            history={history}
+            onClearHistory={() => setHistory([])}
           />
 
         </main>
@@ -858,6 +900,12 @@ function RightPanel({
   onAddAchievement,
   onAddGeneratedProject,
   onAddSkill,
+  versions,
+  onSaveVersion,
+  onRestoreVersion,
+  onDeleteVersion,
+  history,
+  onClearHistory,
 }: {
   resume: Resume;
   score: ReturnType<typeof computeScore>;
@@ -869,7 +917,20 @@ function RightPanel({
   onAddAchievement: (t: string) => void;
   onAddGeneratedProject: (p: { name: string; description: string; tech: string[] }) => void;
   onAddSkill: (skill: string) => void;
+  versions: { id: string; label: string; createdAt: number; snapshot: Resume }[];
+  onSaveVersion: (label: string) => void;
+  onRestoreVersion: (snap: Resume) => void;
+  onDeleteVersion: (id: string) => void;
+  history: HistoryEvent[];
+  onClearHistory: () => void;
 }) {
+  const workspaceResume: WorkspaceResume = {
+    name: resume.name,
+    role: resume.role,
+    summary: resume.summary,
+    skills: resume.skills,
+    projects: resume.projects.map((p) => ({ name: p.name, description: p.description, tech: p.tech })),
+  };
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-5">
       <div className="grid gap-4 md:grid-cols-[1.1fr_1fr]">
@@ -901,6 +962,29 @@ function RightPanel({
         <ResumeAnalytics resume={resume} />
       </div>
       <MissingSectionsCard resume={resume} />
+
+      <div className="mt-2 flex items-center gap-2">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+        <span className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary shadow-elegant">
+          Career Workspace
+        </span>
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      </div>
+      <CareerGapDetector resume={workspaceResume} onAddSkill={onAddSkill} />
+      <div className="grid gap-5 xl:grid-cols-2">
+        <InterviewCoach resume={workspaceResume} />
+        <ResumeVersionsCard<Resume>
+          current={resume}
+          versions={versions}
+          onSave={onSaveVersion}
+          onRestore={onRestoreVersion}
+          onDelete={onDeleteVersion}
+          describe={(s) =>
+            `${s.projects.length} projects · ${s.skills.length} skills${s.role ? ` · ${s.role}` : ""}`
+          }
+        />
+      </div>
+      <HistoryTimeline events={history} onClear={onClearHistory} />
 
       <TemplateGallery template={template} setTemplate={setTemplate} />
     </section>
