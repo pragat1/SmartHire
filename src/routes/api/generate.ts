@@ -92,6 +92,45 @@ Return ONLY JSON:
 { "suggestions": [ { "name": "...", "tagline": "one crisp sentence, <120 chars", "tech": ["..."], "why": "why this closes a resume gap, <140 chars", "difficulty": "Beginner"|"Intermediate"|"Advanced" } ] }
 4 suggestions. No markdown fences.`;
   }
+  if (body.action === "career-gap") {
+    return `You are a senior career strategist. Given the candidate's current skills, experience summary, and target role, produce an in-depth Career Gap analysis and a 90-day roadmap. Be brutally specific — no vague "learn more".
+
+CURRENT SKILLS: ${(body.skills ?? []).join(", ") || "(none)"}
+EXISTING PROJECTS: ${(body.existingProjects ?? []).join(" | ") || "(none)"}
+TARGET ROLE: ${body.targetRole || body.role || "(not specified)"}
+RESUME SUMMARY: ${body.resumeSummary || "(none)"}
+
+Return ONLY JSON:
+{
+  "readiness": number (0-100, how ready the candidate is for the target role),
+  "verdict": "one-sentence honest assessment",
+  "matched_skills": ["skills they already have that fit the role"],
+  "missing_skills": [ { "skill": "...", "priority": "critical"|"important"|"nice-to-have", "why": "one sentence" } ],
+  "hidden_gaps": [ "non-obvious gaps a recruiter would notice, 1 sentence each, 2-3 items" ],
+  "roadmap": [
+    { "week": "Week 1-2", "focus": "...", "actions": ["...","..."], "deliverable": "concrete artifact to add to resume" },
+    { "week": "Week 3-6", "focus": "...", "actions": ["...","..."], "deliverable": "..." },
+    { "week": "Week 7-12", "focus": "...", "actions": ["...","..."], "deliverable": "..." }
+  ],
+  "resume_moves": [ "3-5 immediate edits to the resume that instantly close the gap" ]
+}
+No markdown fences.`;
+  }
+  if (body.action === "interview-prep") {
+    return `You are a technical interview coach. Given the candidate's resume signals, generate a realistic mock-interview pack for the target role. Questions must feel like ones a real interviewer would ask about THIS candidate — reference their projects and skills, don't be generic.
+
+SKILLS: ${(body.skills ?? []).join(", ") || "(none)"}
+PROJECTS: ${(body.existingProjects ?? []).join(" | ") || "(none)"}
+TARGET ROLE: ${body.targetRole || body.role || "(not specified)"}
+
+Return ONLY JSON:
+{
+  "questions": [
+    { "category": "Behavioral"|"Technical"|"System Design"|"Project Deep-Dive", "question": "...", "why_asked": "why an interviewer for this role asks this, 1 sentence", "star_hint": "one-line hint on how to structure a strong answer" }
+  ]
+}
+Return 8 questions, mixed categories, with at least 2 Project Deep-Dive that reference their actual projects by name. No markdown fences.`;
+  }
   // project-full
   return `You are a senior engineer writing a portfolio project package. Produce a strong, believable project the candidate could plausibly ship in 1-3 weekends. Do not invent company names or private metrics — use plausible ranges.
 
