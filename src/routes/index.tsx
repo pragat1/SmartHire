@@ -444,8 +444,27 @@ function SmartHireApp() {
     [flashChange],
   );
 
+  const restoreVersion = useCallback(
+    (snap: Resume) => {
+      setResume(snap);
+      flashChange([
+        "name", "email", "phone", "github", "linkedin", "portfolio", "location", "role",
+        "summary", "skills", "projects", "experience", "certifications", "achievements",
+      ]);
+      pushHistory("Restored a saved version");
+    },
+    [flashChange, pushHistory],
+  );
 
-  return (
+  const saveVersion = useCallback(
+    (label: string) => {
+      versions.save(label, resume);
+      pushHistory(`Saved version "${label || "Current draft"}"`);
+    },
+    [resume, versions, pushHistory],
+  );
+
+
     <div className="min-h-screen w-full text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1700px]">
         <JourneySidebar
