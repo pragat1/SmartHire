@@ -42,6 +42,15 @@ import {
   ResumeAnalytics,
   MissingSectionsCard,
 } from "@/components/analysis-tools";
+import {
+  ResumeVersionsCard,
+  useResumeVersions,
+  CareerGapDetector,
+  InterviewCoach,
+  HistoryTimeline,
+  type HistoryEvent,
+  type WorkspaceResume,
+} from "@/components/workspace-tools";
 
 
 export const Route = createFileRoute("/")({
