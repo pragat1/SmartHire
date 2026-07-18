@@ -17,14 +17,20 @@ function extractJson(text: string): unknown | null {
 }
 
 type Body = {
-  action: "rewrite" | "achievement" | "project-suggest" | "project-full";
+  action:
+    | "rewrite"
+    | "achievement"
+    | "project-suggest"
+    | "project-full"
+    | "career-gap"
+    | "interview-prep";
   // rewrite
   text?: string;
   section?: "summary" | "project" | "bullet" | "achievement";
   modes?: string[];
   // achievement
   raw?: string;
-  // project-suggest
+  // project-suggest / career-gap / interview-prep
   skills?: string[];
   role?: string;
   existingProjects?: string[];
@@ -32,6 +38,9 @@ type Body = {
   name?: string;
   tech?: string[];
   idea?: string;
+  // career-gap / interview-prep
+  targetRole?: string;
+  resumeSummary?: string;
 };
 
 const DEFAULT_REWRITE_MODES = [
