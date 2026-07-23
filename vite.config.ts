@@ -1,12 +1,11 @@
 // @lovable.dev/vite-tanstack-config already includes core plugins — do NOT re-add them.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 
 export default defineConfig({
   tanstackStart: {
-    server: { entry: "server" },
+    server: {
+      entry: "server",
+    },
   },
-  vite: {
-    plugins: [mcpPlugin()],
-  },
+  vite: {},
 });

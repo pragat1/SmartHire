@@ -30,3 +30,20 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Lovable
+.lovable/
+
+# TanStack Router generated file
+src/routeTree.gen.ts
+
+# TypeScript incremental cache
+*.tsbuildinfo
+
+# Coverage
+coverage/
