@@ -393,53 +393,105 @@ function SmartHireApp() {
 
   return (
     <div className="min-h-screen w-full text-foreground">
+  const nextSection = JOURNEY.find((s) => !completedSections.includes(s.key)) ?? null;
+  const isDashboard = view === "dashboard";
+
+  const handleNavigate = (key) => {
+    setView(key);
+    if (key !== "dashboard") {
+      window.setTimeout(() => {
+        const el = document.getElementById(key === "builder" ? "chat-panel" : `panel-${key}`);
+        el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 60);
+    }
+  };
+
+  return (
+    <div className="min-h-screen w-full bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1700px]">
-        <JourneySidebar
+        <AppSidebar
+          active={view}
+          onNavigate={handleNavigate}
+          journey={isDashboard ? null : JOURNEY}
           completed={completedSections}
           progress={progress}
           onJump={jumpToSection}
-          confidence={confidence}
+          name={resume.name}
         />
 
-        <main className="flex min-w-0 flex-1 flex-col gap-4 p-4 lg:flex-row lg:gap-5 lg:p-6">
-          <ChatPanel
-            messages={messages}
-            input={input}
-            setInput={setInput}
-            onSubmit={handleSubmit}
-            thinking={thinking}
-            inputRef={inputRef}
-            chatEndRef={chatEndRef}
-            reasoning={reasoning}
-            detectedSkills={detectedSkills}
-            missing={missing}
-            confidence={confidence}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <TopBar
+            title={isDashboard ? "Dashboard" : "Resume Builder"}
+            subtitle={
+              isDashboard
+                ? "Your resume health at a glance"
+                : "Chat with Aria — your resume updates live"
+            }
+            query={search}
+            onQueryChange={setSearch}
+            notifications={missing.length}
+            name={resume.name}
           />
 
-          <RightPanel
-            resume={resume}
-            score={score}
-            template={template}
-            setTemplate={setTemplate}
-            recentlyChanged={recentlyChanged}
-            onUpdateSummary={updateSummary}
-            onUpdateProjectDescription={updateProjectDescription}
-            onAddAchievement={addAchievement}
-            onAddGeneratedProject={addGeneratedProject}
-            onAddSkill={addSkill}
-            versions={versions.versions}
-            onSaveVersion={saveVersion}
-            onRestoreVersion={restoreVersion}
-            onDeleteVersion={versions.remove}
-            history={history}
-            onClearHistory={() => setHistory([])}
-          />
-        </main>
+          {isDashboard ? (
+            <DashboardHome
+              resume={resume}
+              score={score}
+              progress={progress}
+              confidence={confidence}
+              versions={versions.versions}
+              history={history}
+              missing={missing}
+              nextSection={nextSection}
+              onNavigate={handleNavigate}
+              onRestoreVersion={restoreVersion}
+              onDownload={() => window.print()}
+            />
+          ) : (
+            <main className="flex min-w-0 flex-1 flex-col gap-4 p-4 lg:flex-row lg:gap-5 lg:p-6">
+              <div id="chat-panel" className="flex min-w-0 flex-1 lg:max-w-[540px] xl:max-w-[620px]">
+                <ChatPanel
+                  messages={messages}
+                  input={input}
+                  setInput={setInput}
+                  onSubmit={handleSubmit}
+                  thinking={thinking}
+                  inputRef={inputRef}
+                  chatEndRef={chatEndRef}
+                  reasoning={reasoning}
+                  detectedSkills={detectedSkills}
+                  missing={missing}
+                  confidence={confidence}
+                />
+              </div>
+
+              <RightPanel
+                resume={resume}
+                score={score}
+                template={template}
+                setTemplate={setTemplate}
+                recentlyChanged={recentlyChanged}
+                onUpdateSummary={updateSummary}
+                onUpdateProjectDescription={updateProjectDescription}
+                onAddAchievement={addAchievement}
+                onAddGeneratedProject={addGeneratedProject}
+                onAddSkill={addSkill}
+                versions={versions.versions}
+                onSaveVersion={saveVersion}
+                onRestoreVersion={restoreVersion}
+                onDeleteVersion={versions.remove}
+                history={history}
+                onClearHistory={() => setHistory([])}
+              />
+            </main>
+          )}
+        </div>
       </div>
       {completed && <CelebrationModal score={score} onClose={() => setCompleted(false)} />}
     </div>
   );
 }
+
 
 // ---------- Journey sidebar ----------
 function JourneySidebar({ completed, progress, onJump, confidence }) {
