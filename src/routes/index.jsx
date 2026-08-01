@@ -45,6 +45,8 @@ import {
   InterviewCoach,
   HistoryTimeline,
 } from "@/components/workspace-tools";
+import { AppSidebar, TopBar } from "@/components/dashboard-shell";
+import { DashboardHome } from "@/components/dashboard-home";
 
 export const Route = createFileRoute("/")({
   component: SmartHireApp,
