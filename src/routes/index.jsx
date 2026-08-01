@@ -108,6 +108,8 @@ function SmartHireApp() {
   const [template, setTemplate] = useState("Minimal");
   const [history, setHistory] = useState([]);
   const versions = useResumeVersions();
+  const [view, setView] = useState("dashboard");
+  const [search, setSearch] = useState("");
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
