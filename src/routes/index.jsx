@@ -391,8 +391,6 @@ function SmartHireApp() {
     [resume, versions, pushHistory],
   );
 
-  return (
-    <div className="min-h-screen w-full text-foreground">
   const nextSection = JOURNEY.find((s) => !completedSections.includes(s.key)) ?? null;
   const isDashboard = view === "dashboard";
 
