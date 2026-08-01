@@ -220,7 +220,7 @@ export function DashboardHome({
                       {v.label || "Untitled version"}
                     </div>
                     <div className="truncate text-[11px] text-muted-foreground">
-                      {v.snapshot?.role || "No target role"} · {relTime(v.at)}
+                      {v.snapshot?.role || "No target role"} · {relTime(v.createdAt)}
                     </div>
                   </div>
                   <button
