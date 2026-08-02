@@ -404,9 +404,24 @@ function SmartHireApp() {
     }
   };
 
+  if (view === "landing") {
+    return (
+      <LandingPage
+        resume={resume}
+        progress={progress}
+        score={score}
+        onStart={() => setView("dashboard")}
+        onLogin={() => {
+          window.location.href = "/auth";
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1700px]">
+
         <AppSidebar
           active={view}
           onNavigate={handleNavigate}
