@@ -16,8 +16,8 @@ export function FeatureHighlights() {
             <Icon className="h-4.5 w-4.5" />
           </span>
           <div className="min-w-0">
-            <div className="truncate text-[14px] font-semibold">{title}</div>
-            <div className="truncate text-[12.5px] text-muted-foreground">{description}</div>
+            <div className="text-[14px] font-semibold">{title}</div>
+            <div className="text-[12.5px] leading-snug text-muted-foreground">{description}</div>
           </div>
         </div>
       ))}
