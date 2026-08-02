@@ -47,6 +47,7 @@ import {
 } from "@/components/workspace-tools";
 import { AppSidebar, TopBar } from "@/components/dashboard-shell";
 import { DashboardHome } from "@/components/dashboard-home";
+import { LandingPage } from "@/components/landing/landing-page";
 
 export const Route = createFileRoute("/")({
   component: SmartHireApp,
