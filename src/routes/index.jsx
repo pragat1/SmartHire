@@ -47,6 +47,7 @@ import {
 } from "@/components/workspace-tools";
 import { AppSidebar, TopBar } from "@/components/dashboard-shell";
 import { DashboardHome } from "@/components/dashboard-home";
+import { LandingPage } from "@/components/landing/landing-page";
 
 export const Route = createFileRoute("/")({
   component: SmartHireApp,
@@ -108,7 +109,7 @@ function SmartHireApp() {
   const [template, setTemplate] = useState("Minimal");
   const [history, setHistory] = useState([]);
   const versions = useResumeVersions();
-  const [view, setView] = useState("dashboard");
+  const [view, setView] = useState("landing");
   const [search, setSearch] = useState("");
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -404,9 +405,24 @@ function SmartHireApp() {
     }
   };
 
+  if (view === "landing") {
+    return (
+      <LandingPage
+        resume={resume}
+        progress={progress}
+        score={score}
+        onStart={() => setView("dashboard")}
+        onLogin={() => {
+          window.location.href = "/auth";
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1700px]">
+
         <AppSidebar
           active={view}
           onNavigate={handleNavigate}
