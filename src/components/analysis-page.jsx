@@ -166,8 +166,8 @@ export function ResumeAnalysisHeader({ versions = [], selected, onSelect, onDown
                 {current?.label ?? "Current draft"}
               </span>
               <span className="block truncate text-[11px] text-muted-foreground">
-                {current?.savedAt
-                  ? new Date(current.savedAt).toLocaleString()
+                {current?.createdAt
+                  ? new Date(current.createdAt).toLocaleString()
                   : "Live, unsaved changes"}
               </span>
             </span>
@@ -378,7 +378,7 @@ export function ResumeAnalysisPage({
 
   const viewResume = useMemo(() => {
     const v = versions.find((x) => x.id === selectedVersion);
-    return v?.data ?? v?.resume ?? resume;
+    return v?.snapshot ?? resume;
   }, [versions, selectedVersion, resume]);
 
   return (
@@ -389,7 +389,7 @@ export function ResumeAnalysisPage({
         onSelect={(id) => {
           setSelectedVersion(id);
           const v = versions.find((x) => x.id === id);
-          if (v && onRestoreVersion) onRestoreVersion(v.data ?? v.resume);
+          if (v && onRestoreVersion) onRestoreVersion(v.snapshot);
         }}
         onDownload={onDownload}
         onReanalyze={onReanalyze}
