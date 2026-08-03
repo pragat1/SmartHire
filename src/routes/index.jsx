@@ -38,6 +38,7 @@ import {
   ResumeAnalytics,
   MissingSectionsCard,
 } from "@/components/analysis-tools";
+import { ResumeAnalysisPage } from "@/components/analysis-page";
 import {
   ResumeVersionsCard,
   useResumeVersions,
