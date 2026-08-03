@@ -428,7 +428,7 @@ function SmartHireApp() {
         <AppSidebar
           active={view}
           onNavigate={handleNavigate}
-          journey={isDashboard ? null : JOURNEY}
+          journey={isDashboard || isAnalysis ? null : JOURNEY}
           completed={completedSections}
           progress={progress}
           onJump={jumpToSection}
