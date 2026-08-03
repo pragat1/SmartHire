@@ -437,11 +437,13 @@ function SmartHireApp() {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar
-            title={isDashboard ? "Dashboard" : "Resume Builder"}
+            title={isDashboard ? "Dashboard" : isAnalysis ? "Resume Analysis" : "Resume Builder"}
             subtitle={
               isDashboard
                 ? "Your resume health at a glance"
-                : "Chat with Aria — your resume updates live"
+                : isAnalysis
+                  ? "Detailed insights and AI-powered feedback"
+                  : "Chat with Aria — your resume updates live"
             }
             query={search}
             onQueryChange={setSearch}
@@ -462,6 +464,18 @@ function SmartHireApp() {
               onNavigate={handleNavigate}
               onRestoreVersion={restoreVersion}
               onDownload={() => window.print()}
+            />
+          ) : isAnalysis ? (
+            <ResumeAnalysisPage
+              resume={resume}
+              score={score}
+              missing={missing}
+              versions={versions.versions}
+              analyzing={thinking}
+              onAddSkill={addSkill}
+              onDownload={() => window.print()}
+              onReanalyze={() => void sendMessage("Re-analyze my resume and tell me what to improve.")}
+              onRestoreVersion={restoreVersion}
             />
           ) : (
             <main className="flex min-w-0 flex-1 flex-col gap-4 p-4 lg:flex-row lg:gap-5 lg:p-6">
