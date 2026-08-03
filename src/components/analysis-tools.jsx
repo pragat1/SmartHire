@@ -76,17 +76,17 @@ function Card({
   children,
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-white/80 p-5 shadow-elegant backdrop-blur-xl">
-      <div className="flex items-center gap-2">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+    <div className="rounded-[20px] border border-border bg-card p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition duration-300 hover:-translate-y-0.5 hover:shadow-elegant">
+      <div className="flex items-center gap-2.5">
+        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           {icon}
         </div>
-        <div>
-          <div className="text-sm font-semibold tracking-tight">{title}</div>
-          {subtitle && <div className="text-[11px] text-muted-foreground">{subtitle}</div>}
+        <div className="min-w-0">
+          <div className="text-[15px] font-semibold tracking-tight">{title}</div>
+          {subtitle && <div className="text-[12px] text-muted-foreground">{subtitle}</div>}
         </div>
       </div>
-      <div className="mt-4">{children}</div>
+      <div className="mt-5">{children}</div>
     </div>
   );
 }
