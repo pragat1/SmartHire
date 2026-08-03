@@ -232,7 +232,7 @@ export function ScoreOverview({ score, loading }) {
   const overall = score?.overall;
   const b = band(overall);
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
+    <div className="grid items-start gap-6 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
       <SectionCard>
         <div className="text-[13px] font-medium text-muted-foreground">Overall Resume Score</div>
         <div className="mt-5 flex flex-wrap items-center gap-6">
@@ -398,7 +398,7 @@ export function ResumeAnalysisPage({
 
       <ScoreOverview score={score} loading={analyzing || !score} />
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid items-start gap-6 xl:grid-cols-3">
         <div className="xl:col-span-1">
           <AtsHeatmap resume={viewResume} onAddSkill={onAddSkill} />
         </div>
@@ -411,7 +411,7 @@ export function ResumeAnalysisPage({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid items-start gap-6 lg:grid-cols-2">
         <JobMatchSimulator resume={viewResume} />
         <ResumeAnalytics resume={viewResume} />
       </div>
