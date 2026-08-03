@@ -394,6 +394,7 @@ function SmartHireApp() {
 
   const nextSection = JOURNEY.find((s) => !completedSections.includes(s.key)) ?? null;
   const isDashboard = view === "dashboard";
+  const isAnalysis = view === "analysis";
 
   const handleNavigate = (key) => {
     setView(key);
