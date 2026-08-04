@@ -638,11 +638,11 @@ export function MissingSectionsCard({ resume }) {
       title="Missing Sections & Signals"
       subtitle={`${missing.length} gaps · ${done.length} looking good`}
     >
-      <ul className="space-y-2">
+      <ul className="flex h-full flex-col gap-1.5">
         {missing.map((m) => (
           <li
             key={m.label}
-            className="flex items-start gap-2.5 rounded-xl border border-rose-100 bg-rose-50/50 px-3 py-2"
+            className="flex items-start gap-2.5 rounded-xl border border-rose-100 bg-rose-50/50 px-2.5 py-1.5"
           >
             <div className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-rose-100 text-rose-600">
               <XIcon className="h-3 w-3" />
