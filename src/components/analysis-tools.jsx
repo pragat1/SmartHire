@@ -487,11 +487,11 @@ export function JobMatchSimulator({ resume }) {
       title="Job Match Simulator"
       subtitle="How your resume performs across five company archetypes"
     >
-      <div className="grid gap-2">
+      <div className="grid h-full content-start gap-1.5">
         {rows.map(({ company, score }) => (
           <div
             key={company.key}
-            className="rounded-xl border border-border/60 bg-surface/50 p-3 transition hover:border-primary/40 hover:bg-white"
+            className="rounded-xl border border-border/60 bg-surface/50 p-2.5 transition hover:border-primary/40 hover:bg-white"
           >
             <div className="flex items-center gap-3">
               <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -561,7 +561,7 @@ export function ResumeAnalytics({ resume }) {
       title="Resume Analytics"
       subtitle="Live counts and quality signals recalculated on every edit"
     >
-      <div className="grid h-full content-start auto-rows-min grid-cols-2 gap-2 md:grid-cols-3">
+      <div className="grid h-full content-between auto-rows-min grid-cols-2 gap-2 md:grid-cols-3">
         {cells.map((c) => (
           <div key={c.label} className="flex flex-col justify-center rounded-xl border border-border/60 bg-surface/60 p-3">
             <div className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest ${c.tone}`}>
