@@ -561,9 +561,9 @@ export function ResumeAnalytics({ resume }) {
       title="Resume Analytics"
       subtitle="Live counts and quality signals recalculated on every edit"
     >
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+      <div className="grid h-full auto-rows-fr grid-cols-2 gap-2 md:grid-cols-3">
         {cells.map((c) => (
-          <div key={c.label} className="rounded-xl border border-border/60 bg-surface/60 p-3">
+          <div key={c.label} className="flex flex-col justify-center rounded-xl border border-border/60 bg-surface/60 p-3">
             <div className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest ${c.tone}`}>
               {c.icon}
               {c.label}
