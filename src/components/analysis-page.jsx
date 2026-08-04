@@ -87,10 +87,10 @@ function Skeleton({ className = "" }) {
   return <div className={`animate-pulse rounded-lg bg-surface-2 ${className}`} />;
 }
 
-export function MetricCard({ icon: Icon, label, value, tone, footLabel, footValue, loading }) {
+export function MetricCard({ icon: Icon, label, value, tone, footLabel, footValue, loading, className = "" }) {
   const b = band(value);
   return (
-    <SectionCard className="flex flex-col">
+    <SectionCard className={className}>
       <div className="flex items-center gap-2">
         <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           <Icon className="h-4 w-4" />
