@@ -99,12 +99,12 @@ export function MetricCard({ icon: Icon, label, value, tone, footLabel, footValu
       </div>
 
       {loading ? (
-        <div className="mt-5 flex items-center gap-4">
+        <div className="mt-4 flex flex-1 items-center gap-4">
           <Skeleton className="h-16 w-16 rounded-full" />
           <Skeleton className="h-8 w-16" />
         </div>
       ) : (
-        <div className="mt-5 flex items-center gap-4">
+        <div className="mt-4 flex flex-1 items-center gap-4">
           <CircularProgress value={value} size={64} stroke={7} tone={tone} />
           <div className="min-w-0">
             <div className="flex items-baseline gap-1">
