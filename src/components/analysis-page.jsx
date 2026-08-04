@@ -265,7 +265,7 @@ export function ScoreOverview({ score, loading }) {
         </div>
         {!loading && (
           <span
-            className={`mt-5 inline-block rounded-full px-2.5 py-1 text-[11px] font-semibold ${b.cls}`}
+            className={`mt-4 inline-block self-start rounded-full px-2.5 py-1 text-[11px] font-semibold ${b.cls}`}
           >
             {b.label}
           </span>
@@ -273,6 +273,7 @@ export function ScoreOverview({ score, loading }) {
       </SectionCard>
 
       <MetricCard
+        className="xl:col-span-2"
         icon={ScanSearch}
         label="ATS Score"
         value={score?.ats}
@@ -280,6 +281,7 @@ export function ScoreOverview({ score, loading }) {
         loading={loading}
       />
       <MetricCard
+        className="xl:col-span-2"
         icon={SpellCheck}
         label="Grammar"
         value={score?.grammar}
@@ -287,6 +289,7 @@ export function ScoreOverview({ score, loading }) {
         loading={loading}
       />
       <MetricCard
+        className="xl:col-span-2"
         icon={Zap}
         label="Impact Score"
         value={score?.impact}
@@ -294,6 +297,7 @@ export function ScoreOverview({ score, loading }) {
         loading={loading}
       />
       <MetricCard
+        className="xl:col-span-2"
         icon={BookOpen}
         label="Readability"
         value={score?.readability}
