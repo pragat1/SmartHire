@@ -340,7 +340,7 @@ export function ResumeRadar({ resume }) {
       title="Resume Strength Radar"
       subtitle="How balanced your resume is across the dimensions recruiters scan for"
     >
-      <div className="grid gap-4 md:grid-cols-[200px_1fr] md:items-center">
+      <div className="grid h-full content-center gap-4 md:grid-cols-[200px_1fr] md:items-center">
         <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto h-52 w-52">
           {gridLevels.map((g, gi) => (
             <polygon
