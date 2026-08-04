@@ -86,7 +86,7 @@ function Card({
           {subtitle && <div className="text-[12px] text-muted-foreground">{subtitle}</div>}
         </div>
       </div>
-      <div className="mt-4 flex-1">{children}</div>
+      <div className="mt-4 flex flex-1 flex-col">{children}</div>
     </div>
   );
 }
@@ -184,7 +184,7 @@ export function AtsHeatmap({
         value={jd}
         onChange={(e) => setJd(e.target.value)}
         rows={4}
-        className="w-full resize-none rounded-xl border border-border/60 bg-surface p-3 text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+        className="w-full min-h-[92px] flex-1 resize-none rounded-xl border border-border/60 bg-surface p-3 text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
       />
       <div className="mt-3 flex items-center justify-between">
         <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
