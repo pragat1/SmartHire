@@ -232,10 +232,10 @@ export function ScoreOverview({ score, loading }) {
   const overall = score?.overall;
   const b = band(overall);
   return (
-    <div className="grid items-start gap-6 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
-      <SectionCard>
+    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-12">
+      <SectionCard className="sm:col-span-2 xl:col-span-4">
         <div className="text-[13px] font-medium text-muted-foreground">Overall Resume Score</div>
-        <div className="mt-5 flex flex-wrap items-center gap-6">
+        <div className="mt-4 flex flex-wrap items-center gap-6">
           {loading ? (
             <Skeleton className="h-[130px] w-[130px] rounded-full" />
           ) : (
