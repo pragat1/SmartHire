@@ -9,7 +9,7 @@ const HIGHLIGHTS = [
 
 export function FeatureHighlights() {
   return (
-    <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
+    <div className="mt-7 grid grid-cols-1 gap-5 sm:grid-cols-3">
       {HIGHLIGHTS.map(({ icon: Icon, title, description }) => (
         <div key={title} className="flex min-w-0 items-center gap-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
@@ -27,7 +27,8 @@ export function FeatureHighlights() {
 
 export function CTAButtons({ onPrimary, onSecondary }) {
   return (
-    <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+    <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+
       <button
         onClick={onPrimary}
         className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-7 py-4 text-[15.5px] font-semibold text-primary-foreground shadow-elegant transition hover:-translate-y-0.5 hover:opacity-95 sm:w-auto"
@@ -54,19 +55,17 @@ export function Hero({ resume, progress, score, onPrimary, onSecondary }) {
         <div className="absolute left-[15%] top-[55%] h-64 w-64 rounded-full border border-primary/10" />
       </div>
 
-      <div className="mx-auto grid max-w-[1400px] grid-cols-1 items-center gap-14 px-5 py-20 sm:px-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:py-28">
+      <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[48%_minmax(0,1fr)] lg:gap-16 lg:px-16 lg:py-20">
         <div className="min-w-0 animate-fade-in">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-[12.5px] font-semibold text-accent-foreground">
             <Sparkles className="h-3.5 w-3.5" /> AI-Powered Resume Builder
           </span>
 
-          <h1 className="mt-6 text-[42px] font-bold leading-[1.06] tracking-tight sm:text-[56px] lg:text-[64px]">
-            Build an ATS-Friendly
-            <br className="hidden sm:block" /> Resume with the Power
-            <br className="hidden sm:block" /> of <span className="text-primary">AI</span>
+          <h1 className="mt-5 max-w-[15ch] text-[40px] font-bold leading-[1.08] tracking-tight sm:text-[50px] lg:text-[56px]">
+            Build an ATS-Friendly Resume with the Power of <span className="text-primary">AI</span>
           </h1>
 
-          <p className="mt-6 max-w-lg text-[18px] leading-relaxed text-muted-foreground">
+          <p className="mt-5 max-w-md text-[17px] leading-relaxed text-muted-foreground">
             Answer a few smart questions. Our AI coach builds a professional resume that gets you
             more interviews.
           </p>
@@ -79,6 +78,7 @@ export function Hero({ resume, progress, score, onPrimary, onSecondary }) {
           <HeroPreview resume={resume} progress={progress} score={score} />
         </div>
       </div>
+
     </section>
   );
 }
