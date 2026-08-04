@@ -184,7 +184,7 @@ export function AtsHeatmap({
         value={jd}
         onChange={(e) => setJd(e.target.value)}
         rows={4}
-        className="w-full min-h-[92px] flex-1 resize-none rounded-xl border border-border/60 bg-surface p-3 text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+        className="w-full min-h-[92px] max-h-[150px] flex-1 resize-none rounded-xl border border-border/60 bg-surface p-3 text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
       />
       <div className="mt-3 flex items-center justify-between">
         <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -561,7 +561,7 @@ export function ResumeAnalytics({ resume }) {
       title="Resume Analytics"
       subtitle="Live counts and quality signals recalculated on every edit"
     >
-      <div className="grid h-full auto-rows-fr grid-cols-2 gap-2 md:grid-cols-3">
+      <div className="grid h-full content-start auto-rows-min grid-cols-2 gap-2 md:grid-cols-3">
         {cells.map((c) => (
           <div key={c.label} className="flex flex-col justify-center rounded-xl border border-border/60 bg-surface/60 p-3">
             <div className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest ${c.tone}`}>
@@ -638,7 +638,7 @@ export function MissingSectionsCard({ resume }) {
       title="Missing Sections & Signals"
       subtitle={`${missing.length} gaps · ${done.length} looking good`}
     >
-      <ul className="flex h-full flex-col gap-1.5">
+      <ul className="flex max-h-[430px] flex-col gap-1.5 overflow-y-auto pr-0.5">
         {missing.map((m) => (
           <li
             key={m.label}
