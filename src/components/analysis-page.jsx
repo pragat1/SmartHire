@@ -27,7 +27,7 @@ export function SectionCard({ children, className = "" }) {
   return (
     <div
       className={
-        "rounded-[20px] border border-border bg-card p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition duration-300 hover:-translate-y-0.5 hover:shadow-elegant " +
+        "flex h-full flex-col rounded-[20px] border border-border bg-card p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition duration-300 hover:-translate-y-0.5 hover:shadow-elegant " +
         className
       }
     >
@@ -87,10 +87,10 @@ function Skeleton({ className = "" }) {
   return <div className={`animate-pulse rounded-lg bg-surface-2 ${className}`} />;
 }
 
-export function MetricCard({ icon: Icon, label, value, tone, footLabel, footValue, loading }) {
+export function MetricCard({ icon: Icon, label, value, tone, footLabel, footValue, loading, className = "" }) {
   const b = band(value);
   return (
-    <SectionCard className="flex flex-col">
+    <SectionCard className={className}>
       <div className="flex items-center gap-2">
         <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           <Icon className="h-4 w-4" />
@@ -99,12 +99,12 @@ export function MetricCard({ icon: Icon, label, value, tone, footLabel, footValu
       </div>
 
       {loading ? (
-        <div className="mt-5 flex items-center gap-4">
+        <div className="mt-4 flex flex-1 items-center gap-4">
           <Skeleton className="h-16 w-16 rounded-full" />
           <Skeleton className="h-8 w-16" />
         </div>
       ) : (
-        <div className="mt-5 flex items-center gap-4">
+        <div className="mt-4 flex flex-1 items-center gap-4">
           <CircularProgress value={value} size={64} stroke={7} tone={tone} />
           <div className="min-w-0">
             <div className="flex items-baseline gap-1">
@@ -232,10 +232,10 @@ export function ScoreOverview({ score, loading }) {
   const overall = score?.overall;
   const b = band(overall);
   return (
-    <div className="grid items-start gap-6 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
-      <SectionCard>
+    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-12">
+      <SectionCard className="sm:col-span-2 xl:col-span-4">
         <div className="text-[13px] font-medium text-muted-foreground">Overall Resume Score</div>
-        <div className="mt-5 flex flex-wrap items-center gap-6">
+        <div className="mt-4 flex flex-wrap items-center gap-6">
           {loading ? (
             <Skeleton className="h-[130px] w-[130px] rounded-full" />
           ) : (
@@ -265,7 +265,7 @@ export function ScoreOverview({ score, loading }) {
         </div>
         {!loading && (
           <span
-            className={`mt-5 inline-block rounded-full px-2.5 py-1 text-[11px] font-semibold ${b.cls}`}
+            className={`mt-4 inline-block self-start rounded-full px-2.5 py-1 text-[11px] font-semibold ${b.cls}`}
           >
             {b.label}
           </span>
@@ -273,6 +273,7 @@ export function ScoreOverview({ score, loading }) {
       </SectionCard>
 
       <MetricCard
+        className="xl:col-span-2"
         icon={ScanSearch}
         label="ATS Score"
         value={score?.ats}
@@ -280,6 +281,7 @@ export function ScoreOverview({ score, loading }) {
         loading={loading}
       />
       <MetricCard
+        className="xl:col-span-2"
         icon={SpellCheck}
         label="Grammar"
         value={score?.grammar}
@@ -287,6 +289,7 @@ export function ScoreOverview({ score, loading }) {
         loading={loading}
       />
       <MetricCard
+        className="xl:col-span-2"
         icon={Zap}
         label="Impact Score"
         value={score?.impact}
@@ -294,6 +297,7 @@ export function ScoreOverview({ score, loading }) {
         loading={loading}
       />
       <MetricCard
+        className="xl:col-span-2"
         icon={BookOpen}
         label="Readability"
         value={score?.readability}
@@ -316,9 +320,9 @@ function Row({ label, value, accent }) {
 /* ------------------------------------------------------------------ */
 /*  Recommendations                                                    */
 /* ------------------------------------------------------------------ */
-export function RecommendationsCard({ items = [], onAction }) {
+export function RecommendationsCard({ items = [], onAction, className = "" }) {
   return (
-    <SectionCard>
+    <SectionCard className={className}>
       <div className="flex items-center gap-2">
         <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           <Lightbulb className="h-4 w-4" />
@@ -332,19 +336,21 @@ export function RecommendationsCard({ items = [], onAction }) {
       </div>
 
       {items.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 p-6 text-center">
-          <Sparkles className="mx-auto h-5 w-5 text-muted-foreground" />
-          <p className="mt-2 text-[13px] text-muted-foreground">
-            No recommendations yet — chat with your coach or re-analyze to generate them.
-          </p>
+        <div className="mt-4 grid flex-1 place-items-center rounded-xl border border-dashed border-border bg-surface/60 p-5 text-center">
+          <div>
+            <Sparkles className="mx-auto h-5 w-5 text-muted-foreground" />
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              No recommendations yet — chat with your coach or re-analyze to generate them.
+            </p>
+          </div>
         </div>
       ) : (
-        <ul className="mt-4 space-y-2">
+        <ul className="mt-4 flex-1 space-y-2">
           {items.map((item) => (
             <li key={item}>
               <button
                 onClick={() => onAction?.(item)}
-                className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface/50 px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-card"
+                className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface/50 px-3 py-2 text-left transition hover:border-primary/40 hover:bg-card"
               >
                 <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                   <Sparkles className="h-4 w-4" />
@@ -382,7 +388,7 @@ export function ResumeAnalysisPage({
   }, [versions, selectedVersion, resume]);
 
   return (
-    <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-6 p-4 sm:p-6">
+    <main className="mx-auto w-full max-w-[1600px] flex-1 space-y-6 p-4 sm:p-6">
       <ResumeAnalysisHeader
         versions={versions}
         selected={selectedVersion}
@@ -398,22 +404,24 @@ export function ResumeAnalysisPage({
 
       <ScoreOverview score={score} loading={analyzing || !score} />
 
-      <div className="grid items-start gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-1">
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-12">
+        <div className="md:col-span-1 xl:col-span-4">
           <AtsHeatmap resume={viewResume} onAddSkill={onAddSkill} />
         </div>
-        <div className="xl:col-span-1">
+        <div className="md:col-span-1 xl:col-span-5">
           <ResumeRadar resume={viewResume} />
         </div>
-        <div className="flex flex-col gap-6 xl:col-span-1">
+        <div className="md:col-span-2 xl:col-span-3">
           <MissingSectionsCard resume={viewResume} />
-          <RecommendationsCard items={missing} />
         </div>
-      </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <JobMatchSimulator resume={viewResume} />
-        <ResumeAnalytics resume={viewResume} />
+        <div className="md:col-span-1 xl:col-span-5">
+          <JobMatchSimulator resume={viewResume} />
+        </div>
+        <div className="md:col-span-1 xl:col-span-4">
+          <ResumeAnalytics resume={viewResume} />
+        </div>
+        <RecommendationsCard items={missing} className="md:col-span-2 xl:col-span-3" />
       </div>
     </main>
   );

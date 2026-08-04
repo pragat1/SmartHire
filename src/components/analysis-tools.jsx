@@ -76,7 +76,7 @@ function Card({
   children,
 }) {
   return (
-    <div className="rounded-[20px] border border-border bg-card p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition duration-300 hover:-translate-y-0.5 hover:shadow-elegant">
+    <div className="flex h-full flex-col rounded-[20px] border border-border bg-card p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition duration-300 hover:-translate-y-0.5 hover:shadow-elegant">
       <div className="flex items-center gap-2.5">
         <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           {icon}
@@ -86,7 +86,7 @@ function Card({
           {subtitle && <div className="text-[12px] text-muted-foreground">{subtitle}</div>}
         </div>
       </div>
-      <div className="mt-5">{children}</div>
+      <div className="mt-4 flex flex-1 flex-col">{children}</div>
     </div>
   );
 }
@@ -184,7 +184,7 @@ export function AtsHeatmap({
         value={jd}
         onChange={(e) => setJd(e.target.value)}
         rows={4}
-        className="w-full resize-none rounded-xl border border-border/60 bg-surface p-3 text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+        className="w-full min-h-[92px] max-h-[150px] flex-1 resize-none rounded-xl border border-border/60 bg-surface p-3 text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
       />
       <div className="mt-3 flex items-center justify-between">
         <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -340,7 +340,7 @@ export function ResumeRadar({ resume }) {
       title="Resume Strength Radar"
       subtitle="How balanced your resume is across the dimensions recruiters scan for"
     >
-      <div className="grid gap-4 md:grid-cols-[200px_1fr] md:items-center">
+      <div className="grid h-full content-center gap-4 md:grid-cols-[200px_1fr] md:items-center">
         <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto h-52 w-52">
           {gridLevels.map((g, gi) => (
             <polygon
@@ -487,11 +487,11 @@ export function JobMatchSimulator({ resume }) {
       title="Job Match Simulator"
       subtitle="How your resume performs across five company archetypes"
     >
-      <div className="grid gap-2">
+      <div className="grid h-full content-start gap-1.5">
         {rows.map(({ company, score }) => (
           <div
             key={company.key}
-            className="rounded-xl border border-border/60 bg-surface/50 p-3 transition hover:border-primary/40 hover:bg-white"
+            className="rounded-xl border border-border/60 bg-surface/50 p-2.5 transition hover:border-primary/40 hover:bg-white"
           >
             <div className="flex items-center gap-3">
               <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -561,9 +561,9 @@ export function ResumeAnalytics({ resume }) {
       title="Resume Analytics"
       subtitle="Live counts and quality signals recalculated on every edit"
     >
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+      <div className="grid h-full content-between auto-rows-min grid-cols-2 gap-2 md:grid-cols-3">
         {cells.map((c) => (
-          <div key={c.label} className="rounded-xl border border-border/60 bg-surface/60 p-3">
+          <div key={c.label} className="flex flex-col justify-center rounded-xl border border-border/60 bg-surface/60 p-3">
             <div className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest ${c.tone}`}>
               {c.icon}
               {c.label}
@@ -638,11 +638,11 @@ export function MissingSectionsCard({ resume }) {
       title="Missing Sections & Signals"
       subtitle={`${missing.length} gaps · ${done.length} looking good`}
     >
-      <ul className="space-y-2">
+      <ul className="flex max-h-[430px] flex-col gap-1.5 overflow-y-auto pr-0.5">
         {missing.map((m) => (
           <li
             key={m.label}
-            className="flex items-start gap-2.5 rounded-xl border border-rose-100 bg-rose-50/50 px-3 py-2"
+            className="flex items-start gap-2.5 rounded-xl border border-rose-100 bg-rose-50/50 px-2.5 py-1.5"
           >
             <div className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-rose-100 text-rose-600">
               <XIcon className="h-3 w-3" />
