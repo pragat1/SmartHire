@@ -388,7 +388,7 @@ export function ResumeAnalysisPage({
   }, [versions, selectedVersion, resume]);
 
   return (
-    <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-6 p-4 sm:p-6">
+    <main className="mx-auto w-full max-w-[1600px] flex-1 space-y-6 p-4 sm:p-6">
       <ResumeAnalysisHeader
         versions={versions}
         selected={selectedVersion}
@@ -404,22 +404,24 @@ export function ResumeAnalysisPage({
 
       <ScoreOverview score={score} loading={analyzing || !score} />
 
-      <div className="grid items-start gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-1">
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-12">
+        <div className="md:col-span-1 xl:col-span-4">
           <AtsHeatmap resume={viewResume} onAddSkill={onAddSkill} />
         </div>
-        <div className="xl:col-span-1">
+        <div className="md:col-span-1 xl:col-span-5">
           <ResumeRadar resume={viewResume} />
         </div>
-        <div className="flex flex-col gap-6 xl:col-span-1">
+        <div className="md:col-span-2 xl:col-span-3">
           <MissingSectionsCard resume={viewResume} />
-          <RecommendationsCard items={missing} />
         </div>
-      </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <JobMatchSimulator resume={viewResume} />
-        <ResumeAnalytics resume={viewResume} />
+        <div className="md:col-span-1 xl:col-span-5">
+          <JobMatchSimulator resume={viewResume} />
+        </div>
+        <div className="md:col-span-1 xl:col-span-4">
+          <ResumeAnalytics resume={viewResume} />
+        </div>
+        <RecommendationsCard items={missing} className="md:col-span-2 xl:col-span-3" />
       </div>
     </main>
   );
