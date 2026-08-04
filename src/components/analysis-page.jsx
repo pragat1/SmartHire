@@ -320,9 +320,9 @@ function Row({ label, value, accent }) {
 /* ------------------------------------------------------------------ */
 /*  Recommendations                                                    */
 /* ------------------------------------------------------------------ */
-export function RecommendationsCard({ items = [], onAction }) {
+export function RecommendationsCard({ items = [], onAction, className = "" }) {
   return (
-    <SectionCard>
+    <SectionCard className={className}>
       <div className="flex items-center gap-2">
         <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           <Lightbulb className="h-4 w-4" />
@@ -336,19 +336,21 @@ export function RecommendationsCard({ items = [], onAction }) {
       </div>
 
       {items.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 p-6 text-center">
-          <Sparkles className="mx-auto h-5 w-5 text-muted-foreground" />
-          <p className="mt-2 text-[13px] text-muted-foreground">
-            No recommendations yet — chat with your coach or re-analyze to generate them.
-          </p>
+        <div className="mt-4 grid flex-1 place-items-center rounded-xl border border-dashed border-border bg-surface/60 p-5 text-center">
+          <div>
+            <Sparkles className="mx-auto h-5 w-5 text-muted-foreground" />
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              No recommendations yet — chat with your coach or re-analyze to generate them.
+            </p>
+          </div>
         </div>
       ) : (
-        <ul className="mt-4 space-y-2">
+        <ul className="mt-4 flex-1 space-y-2">
           {items.map((item) => (
             <li key={item}>
               <button
                 onClick={() => onAction?.(item)}
-                className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface/50 px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-card"
+                className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface/50 px-3 py-2 text-left transition hover:border-primary/40 hover:bg-card"
               >
                 <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                   <Sparkles className="h-4 w-4" />
