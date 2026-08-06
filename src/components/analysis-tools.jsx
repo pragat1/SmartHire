@@ -309,107 +309,128 @@ function scoreCategories(r) {
   return { technical, leadership, projects, communication, impact, consistency };
 }
 
+export { scoreCategories };
+
 export function ResumeRadar({ resume }) {
   const s = useMemo(() => scoreCategories(resume), [resume]);
   const cats = [
-    { key: "technical", label: "Technical Skills", value: s.technical },
+    { key: "technical", label: "Technical", value: s.technical },
     { key: "leadership", label: "Leadership", value: s.leadership },
     { key: "projects", label: "Projects", value: s.projects },
     { key: "communication", label: "Communication", value: s.communication },
-    { key: "impact", label: "Impact & Metrics", value: s.impact },
-    { key: "consistency", label: "Profile Complete", value: s.consistency },
+    { key: "impact", label: "Impact", value: s.impact },
+    { key: "consistency", label: "Profile", value: s.consistency },
   ];
+  const total = cats.reduce((n, c) => n + c.value, 0);
+  const avg = Math.round(total / cats.length);
 
-  // Simple radar polygon coords
-  const size = 200;
+  const size = 300;
   const cx = size / 2;
   const cy = size / 2;
-  const R = 80;
-  const points = cats
-    .map((c, i) => {
-      const angle = (Math.PI * 2 * i) / cats.length - Math.PI / 2;
-      const r = (c.value / 100) * R;
-      return `${cx + Math.cos(angle) * r},${cy + Math.sin(angle) * r}`;
-    })
-    .join(" ");
-  const gridLevels = [0.33, 0.66, 1];
+  const R = 104;
+  const pt = (i, ratio) => {
+    const angle = (Math.PI * 2 * i) / cats.length - Math.PI / 2;
+    return [cx + Math.cos(angle) * R * ratio, cy + Math.sin(angle) * R * ratio];
+  };
+  const poly = (ratios) => ratios.map((r, i) => pt(i, r).join(",")).join(" ");
+  const points = poly(cats.map((c) => Math.max(c.value, 2) / 100));
+
+  const weakest = [...cats].sort((a, b) => a.value - b.value)[0];
 
   return (
     <Card
       icon={<Radar className="h-4 w-4" />}
       title="Resume Strength Radar"
-      subtitle="How balanced your resume is across the dimensions recruiters scan for"
+      subtitle="Balance across the six dimensions recruiters scan"
     >
-      <div className="grid h-full content-center gap-4 md:grid-cols-[200px_1fr] md:items-center">
-        <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto h-52 w-52">
-          {gridLevels.map((g, gi) => (
-            <polygon
-              key={gi}
-              points={cats
-                .map((_, i) => {
-                  const angle = (Math.PI * 2 * i) / cats.length - Math.PI / 2;
-                  return `${cx + Math.cos(angle) * R * g},${cy + Math.sin(angle) * R * g}`;
-                })
-                .join(" ")}
-              fill="none"
-              stroke="hsl(220 20% 88%)"
-              strokeWidth={1}
-            />
-          ))}
-          {cats.map((_, i) => {
-            const angle = (Math.PI * 2 * i) / cats.length - Math.PI / 2;
-            return (
-              <line
-                key={i}
-                x1={cx}
-                y1={cy}
-                x2={cx + Math.cos(angle) * R}
-                y2={cy + Math.sin(angle) * R}
-                stroke="hsl(220 20% 90%)"
-                strokeWidth={1}
-              />
-            );
-          })}
-          <polygon
-            points={points}
-            fill="rgba(99,102,241,0.25)"
-            stroke="rgb(99,102,241)"
-            strokeWidth={2}
-          />
-          {cats.map((c, i) => {
-            const angle = (Math.PI * 2 * i) / cats.length - Math.PI / 2;
-            const r = (c.value / 100) * R;
-            return (
-              <circle
-                key={c.key}
-                cx={cx + Math.cos(angle) * r}
-                cy={cy + Math.sin(angle) * r}
-                r={3}
-                fill="rgb(79,70,229)"
-              />
-            );
-          })}
-        </svg>
-        <div className="grid grid-cols-1 gap-2">
-          {cats.map((c) => (
-            <div key={c.key} className="flex items-center gap-3">
-              <div className="w-32 shrink-0 text-xs font-medium text-foreground/90">{c.label}</div>
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
-                <div
-                  className="h-full rounded-full gradient-primary transition-[width] duration-700"
-                  style={{ width: `${c.value}%` }}
-                />
-              </div>
-              <div className="w-8 text-right text-[11px] font-semibold tabular-nums text-muted-foreground">
-                {c.value}
-              </div>
-            </div>
-          ))}
+      {total === 0 ? (
+        <div className="grid flex-1 place-items-center rounded-2xl border border-dashed border-border bg-surface/60 p-8 text-center">
+          <div className="max-w-[260px]">
+            <Radar className="mx-auto h-6 w-6 text-muted-foreground" />
+            <div className="mt-3 text-sm font-semibold">Not enough resume data yet</div>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Add skills, experience or a project and your strength profile will appear here.
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-1 flex-col">
+          <div className="relative mx-auto w-full max-w-[340px]">
+            <svg viewBox={`0 0 ${size} ${size}`} className="w-full">
+              <defs>
+                <linearGradient id="radarFill" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="rgb(99,102,241)" stopOpacity="0.38" />
+                  <stop offset="100%" stopColor="rgb(59,130,246)" stopOpacity="0.18" />
+                </linearGradient>
+              </defs>
+              {[0.25, 0.5, 0.75, 1].map((g) => (
+                <polygon
+                  key={g}
+                  points={poly(cats.map(() => g))}
+                  fill={g === 1 ? "rgba(99,102,241,0.03)" : "none"}
+                  stroke="hsl(220 20% 89%)"
+                  strokeWidth={1}
+                />
+              ))}
+              {cats.map((c, i) => {
+                const [x, y] = pt(i, 1);
+                const [lx, ly] = pt(i, 1.22);
+                return (
+                  <g key={c.key}>
+                    <line x1={cx} y1={cy} x2={x} y2={y} stroke="hsl(220 20% 92%)" strokeWidth={1} />
+                    <text
+                      x={lx}
+                      y={ly}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-muted-foreground"
+                      style={{ fontSize: 11, fontWeight: 600 }}
+                    >
+                      {c.label}
+                    </text>
+                    <text
+                      x={lx}
+                      y={ly + 12}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-foreground"
+                      style={{ fontSize: 11, fontWeight: 700 }}
+                    >
+                      {c.value}
+                    </text>
+                  </g>
+                );
+              })}
+              <polygon
+                points={points}
+                fill="url(#radarFill)"
+                stroke="rgb(79,70,229)"
+                strokeWidth={2}
+                strokeLinejoin="round"
+              />
+              {cats.map((c, i) => {
+                const [x, y] = pt(i, Math.max(c.value, 2) / 100);
+                return <circle key={c.key} cx={x} cy={y} r={3.5} fill="rgb(79,70,229)" />;
+              })}
+            </svg>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface/60 px-3 py-2">
+            <span className="text-[12px] text-muted-foreground">
+              Balance score <span className="font-bold text-foreground">{avg}/100</span>
+            </span>
+            <span className="text-[12px] text-muted-foreground">
+              Weakest area:{" "}
+              <span className="font-semibold text-rose-600">
+                {weakest.label} ({weakest.value})
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  3. Job Match Simulator                                             */
