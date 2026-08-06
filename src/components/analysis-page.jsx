@@ -387,7 +387,7 @@ export function RecommendationsCard({ items = [], onFix, className = "" }) {
           </div>
         </div>
       ) : (
-        <ul className="mt-4 flex flex-1 flex-col gap-2">
+        <ul className="mt-4 grid flex-1 auto-rows-min gap-2 lg:grid-cols-2">
           {items.map((item) => (
             <li
               key={item.id}
@@ -630,19 +630,8 @@ export function ResumeAnalysisPage({
 
           <section className="space-y-3">
             <SectionHeading title="AI Recommendations" hint="Ranked by expected ATS gain — fix from highest impact down" />
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-12">
-              <RecommendationsCard
-                items={recommendations.slice(0, Math.ceil(recommendations.length / 2))}
-                onFix={handleFix}
-                className="xl:col-span-6"
-              />
-              {recommendations.length > 1 && (
-                <RecommendationsCard
-                  items={recommendations.slice(Math.ceil(recommendations.length / 2))}
-                  onFix={handleFix}
-                  className="xl:col-span-6"
-                />
-              )}
+            <div className="grid gap-6 xl:grid-cols-12">
+              <RecommendationsCard items={recommendations} onFix={handleFix} className="xl:col-span-12" />
             </div>
           </section>
         </div>
