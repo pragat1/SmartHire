@@ -491,14 +491,25 @@ function companyScore(cats, c, r) {
   return Math.max(30, Math.min(97, Math.round(base + bonus)));
 }
 
+function toneFor(score) {
+  if (score >= 80) return { bar: "bg-emerald-500", text: "text-emerald-600", chip: "bg-emerald-50 text-emerald-700" };
+  if (score >= 65) return { bar: "bg-sky-500", text: "text-sky-600", chip: "bg-sky-50 text-sky-700" };
+  if (score >= 50) return { bar: "bg-orange-500", text: "text-orange-600", chip: "bg-orange-50 text-orange-700" };
+  return { bar: "bg-rose-500", text: "text-rose-600", chip: "bg-rose-50 text-rose-700" };
+}
+
 export function JobMatchSimulator({ resume }) {
   const cats = useMemo(() => scoreCategories(resume), [resume]);
   const rows = useMemo(
     () =>
-      COMPANIES.map((c) => ({
-        company: c,
-        score: companyScore(cats, c, resume),
-      })).sort((a, b) => b.score - a.score),
+      COMPANIES.map((c) => {
+        const score = companyScore(cats, c, resume);
+        return {
+          company: c,
+          score,
+          interview: Math.max(5, Math.min(85, Math.round((score - 40) * 1.35))),
+        };
+      }).sort((a, b) => b.score - a.score),
     [cats, resume],
   );
 
@@ -506,38 +517,47 @@ export function JobMatchSimulator({ resume }) {
     <Card
       icon={<Building2 className="h-4 w-4" />}
       title="Job Match Simulator"
-      subtitle="How your resume performs across five company archetypes"
+      subtitle="Match strength and estimated interview probability by company type"
     >
-      <div className="grid h-full content-start gap-1.5">
-        {rows.map(({ company, score }) => (
-          <div
-            key={company.key}
-            className="rounded-xl border border-border/60 bg-surface/50 p-2.5 transition hover:border-primary/40 hover:bg-white"
-          >
-            <div className="flex items-center gap-3">
-              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
-                {company.icon}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold">{company.label}</div>
-                  <div className="text-sm font-bold tabular-nums gradient-text">{score}%</div>
+      <div className="grid flex-1 content-start gap-2">
+        {rows.map(({ company, score, interview }) => {
+          const t = toneFor(score);
+          return (
+            <div
+              key={company.key}
+              className="rounded-xl border border-border/60 bg-surface/50 p-3 transition hover:border-primary/40 hover:bg-card"
+            >
+              <div className="flex items-center gap-3">
+                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  {company.icon}
                 </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white">
-                  <div
-                    className="h-full rounded-full gradient-primary transition-[width] duration-700"
-                    style={{ width: `${score}%` }}
-                  />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="truncate text-sm font-semibold">{company.label}</div>
+                    <div className={`text-sm font-bold tabular-nums ${t.text}`}>{score}%</div>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border/60">
+                    <div
+                      className={`h-full rounded-full ${t.bar} transition-[width] duration-700`}
+                      style={{ width: `${score}%` }}
+                    />
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] text-muted-foreground">{company.note}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${t.chip}`}>
+                      ~{interview}% interview odds
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-1.5 text-[11px] text-muted-foreground">{company.note}</div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Card>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  4. Resume Analytics                                                */
