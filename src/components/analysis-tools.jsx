@@ -566,8 +566,7 @@ export function ResumeAnalytics({ resume }) {
   const stats = useMemo(() => {
     const ws = words(resume);
     const wordCount = ws.length;
-    const readingTime = Math.max(1, Math.round(wordCount / 220));
-    const actionVerbCount = ws.filter((w) => ACTION_VERBS.has(w)).length;
+    const readingSec = Math.max(10, Math.round((wordCount / 220) * 60));
     const bullets = [
       ...resume.projects.map((p) => p.description),
       ...resume.experience.flatMap((e) => e.bullets),
@@ -581,42 +580,70 @@ export function ResumeAnalytics({ resume }) {
     ).length;
     const actionVerbPct = bullets.length === 0 ? 0 : Math.round((bulletsWithVerb / bullets.length) * 100);
     const buzzCount = ws.filter((w) => BUZZWORDS.has(w)).length;
-    const quantified = (resumeText(resume).match(/\d+%|\d+x|\d{2,}\+|\$\d+|\d+ users|\d+ ms/gi) ?? []).length;
-    const grammar = Math.max(60, Math.min(99, 92 - buzzCount * 3 + Math.min(5, quantified)));
-    const ats = Math.max(40, Math.min(97, 55 + Math.min(20, resume.skills.length) + Math.min(10, quantified * 2)));
-    return { wordCount, readingTime, actionVerbCount, actionVerbPct, buzzCount, grammar, ats, quantified };
+    const sectionsTotal = 8;
+    const sectionsDone = [
+      !!resume.summary?.trim(),
+      resume.skills.length > 0,
+      resume.experience.length > 0,
+      resume.projects.length > 0,
+      resume.education.length > 0,
+      resume.certifications.length > 0,
+      resume.achievements.length > 0,
+      !!(resume.linkedin || resume.github || resume.portfolio),
+    ].filter(Boolean).length;
+    const uniqueTech = new Set(
+      ws.filter((w) => TECH_HINTS.includes(w)),
+    ).size;
+    const keywordDensity = wordCount === 0 ? 0 : Math.round((uniqueTech / TECH_HINTS.length) * 100);
+    const pages = Math.max(0.5, Math.round((wordCount / 500) * 10) / 10);
+    return { wordCount, readingSec, actionVerbPct, buzzCount, sectionsDone, sectionsTotal, keywordDensity, pages };
   }, [resume]);
 
-  const cells = [
-    { label: "Words", value: `${stats.wordCount}`, icon: <TypeIcon className="h-3.5 w-3.5" />, tone: "text-indigo-600", hint: "Aim: 400-650" },
-    { label: "Reading time", value: `${stats.readingTime} min`, icon: <Timer className="h-3.5 w-3.5" />, tone: "text-sky-600" },
-    { label: "ATS", value: `${stats.ats}`, icon: <BarChart3 className="h-3.5 w-3.5" />, tone: "text-emerald-600" },
-    { label: "Grammar", value: `${stats.grammar}%`, icon: <Sparkles className="h-3.5 w-3.5" />, tone: "text-emerald-600" },
-    { label: "Action verbs", value: `${stats.actionVerbPct}%`, icon: <Rocket className="h-3.5 w-3.5" />, tone: "text-orange-600" },
-    { label: "Buzzwords", value: `${stats.buzzCount}`, icon: <Flame className="h-3.5 w-3.5" />, tone: stats.buzzCount > 2 ? "text-rose-600" : "text-emerald-600" },
+  const fmtTime = (s) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`);
+  const rows = [
+    { label: "Word count", value: `${stats.wordCount}`, hint: "Ideal 400–650", ok: stats.wordCount >= 400 && stats.wordCount <= 650, icon: <TypeIcon className="h-3.5 w-3.5" /> },
+    { label: "Reading time", value: fmtTime(stats.readingSec), hint: "Recruiters skim in ~30s", ok: stats.readingSec <= 180, icon: <Timer className="h-3.5 w-3.5" /> },
+    { label: "Sections completed", value: `${stats.sectionsDone}/${stats.sectionsTotal}`, hint: "Fill every core section", ok: stats.sectionsDone >= 6, icon: <Check className="h-3.5 w-3.5" /> },
+    { label: "Action verbs", value: `${stats.actionVerbPct}%`, hint: "Bullets starting strong", ok: stats.actionVerbPct >= 70, icon: <Rocket className="h-3.5 w-3.5" /> },
+    { label: "Buzzwords", value: `${stats.buzzCount}`, hint: "Keep under 3", ok: stats.buzzCount < 3, icon: <Flame className="h-3.5 w-3.5" /> },
+    { label: "Keyword density", value: `${stats.keywordDensity}%`, hint: "Tech coverage vs market", ok: stats.keywordDensity >= 20, icon: <Target className="h-3.5 w-3.5" /> },
+    { label: "Resume length", value: `${stats.pages} page${stats.pages === 1 ? "" : "s"}`, hint: "1 page under 8 yrs exp", ok: stats.pages <= 2, icon: <BarChart3 className="h-3.5 w-3.5" /> },
   ];
 
   return (
     <Card
       icon={<BarChart3 className="h-4 w-4" />}
       title="Resume Analytics"
-      subtitle="Live counts and quality signals recalculated on every edit"
+      subtitle="Structural signals recalculated on every edit"
     >
-      <div className="grid h-full content-between auto-rows-min grid-cols-2 gap-2 md:grid-cols-3">
-        {cells.map((c) => (
-          <div key={c.label} className="flex flex-col justify-center rounded-xl border border-border/60 bg-surface/60 p-3">
-            <div className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest ${c.tone}`}>
-              {c.icon}
-              {c.label}
+      <ul className="flex flex-1 flex-col divide-y divide-border/60">
+        {rows.map((r) => (
+          <li key={r.label} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+            <div
+              className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${
+                r.ok ? "bg-emerald-50 text-emerald-600" : "bg-orange-50 text-orange-600"
+              }`}
+            >
+              {r.icon}
             </div>
-            <div className="mt-1 text-xl font-bold tracking-tight text-foreground">{c.value}</div>
-            {c.hint && <div className="text-[10px] text-muted-foreground">{c.hint}</div>}
-          </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13px] font-semibold">{r.label}</div>
+              <div className="truncate text-[11px] text-muted-foreground">{r.hint}</div>
+            </div>
+            <div
+              className={`shrink-0 text-[15px] font-bold tabular-nums ${
+                r.ok ? "text-foreground" : "text-orange-600"
+              }`}
+            >
+              {r.value}
+            </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </Card>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  5. Missing Sections                                                */
