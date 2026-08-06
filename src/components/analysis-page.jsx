@@ -133,7 +133,7 @@ export function MetricCard({ icon: Icon, label, value, tone, delta, explanation,
           <CircularProgress value={value} size={60} stroke={7} tone={tone} />
           <div className="min-w-0">
             <div className="flex items-baseline gap-1">
-              <span className="text-[30px] font-bold leading-none tracking-tight">{value}</span>
+              <span className="text-[28px] font-bold leading-none tracking-tight">{value}</span>
               <span className="text-[12px] text-muted-foreground">/100</span>
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -258,12 +258,12 @@ export function ScoreOverview({ score, loading, deltas = {}, explain = {} }) {
   const b = band(overall);
   return (
     <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-12">
-      <SectionCard className="sm:col-span-2 xl:col-span-4">
+      <SectionCard className="sm:col-span-2 xl:col-span-12">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[13px] font-medium text-muted-foreground">Overall Resume Score</span>
           <Trend delta={deltas.overall} />
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-5">
+        <div className="mt-4 flex flex-wrap items-center gap-6">
           {loading ? (
             <Skeleton className="h-[120px] w-[120px] rounded-full" />
           ) : (
@@ -275,7 +275,7 @@ export function ScoreOverview({ score, loading, deltas = {}, explain = {} }) {
             </CircularProgress>
           )}
           <div className="min-w-[170px] flex-1">
-            <dl className="space-y-2 text-[13px]">
+            <dl className="grid gap-x-8 gap-y-2 text-[13px] sm:grid-cols-2">
               <Row label="ATS readiness" value={loading ? "—" : `${score?.ats}/100`} />
               <Row label="Grammar" value={loading ? "—" : `${score?.grammar}/100`} />
               <Row label="Impact & relevance" value={loading ? "—" : `${score?.impact}/100`} />
@@ -298,7 +298,7 @@ export function ScoreOverview({ score, loading, deltas = {}, explain = {} }) {
       </SectionCard>
 
       <MetricCard
-        className="xl:col-span-2"
+        className="sm:col-span-1 xl:col-span-3"
         icon={ScanSearch}
         label="ATS Score"
         value={score?.ats}
@@ -308,7 +308,7 @@ export function ScoreOverview({ score, loading, deltas = {}, explain = {} }) {
         loading={loading}
       />
       <MetricCard
-        className="xl:col-span-2"
+        className="sm:col-span-1 xl:col-span-3"
         icon={SpellCheck}
         label="Grammar"
         value={score?.grammar}
@@ -318,7 +318,7 @@ export function ScoreOverview({ score, loading, deltas = {}, explain = {} }) {
         loading={loading}
       />
       <MetricCard
-        className="xl:col-span-2"
+        className="sm:col-span-1 xl:col-span-3"
         icon={Zap}
         label="Impact Score"
         value={score?.impact}
@@ -328,7 +328,7 @@ export function ScoreOverview({ score, loading, deltas = {}, explain = {} }) {
         loading={loading}
       />
       <MetricCard
-        className="xl:col-span-2"
+        className="sm:col-span-1 xl:col-span-3"
         icon={BookOpen}
         label="Readability"
         value={score?.readability}
