@@ -760,3 +760,136 @@ export function AnalysisSectionHeader() {
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Actionable AI recommendations                                      */
+/* ------------------------------------------------------------------ */
+export function buildRecommendations(resume) {
+  const text = resumeText(resume).toLowerCase();
+  const quantified = (resumeText(resume).match(/\d+%|\d+x|\d{2,}\+|\$\d+/gi) ?? []).length;
+  const ws = words(resume);
+  const missingTech = TECH_HINTS.filter((t) => !text.includes(t)).slice(0, 4);
+  const bullets = [
+    ...resume.projects.map((p) => p.description),
+    ...resume.experience.flatMap((e) => e.bullets),
+  ].filter(Boolean);
+  const buzz = ws.filter((w) => BUZZWORDS.has(w));
+
+  const list = [
+    {
+      id: "summary",
+      title: "Write a targeted professional summary",
+      priority: "Critical",
+      ats: 6,
+      why: "Your resume has no 2–3 line summary, so ATS parsers and recruiters miss your positioning in the first scan.",
+      target: "summary",
+      show: (resume.summary ?? "").trim().length < 40,
+    },
+    {
+      id: "quantify",
+      title: "Quantify your achievements",
+      priority: "Critical",
+      ats: 8,
+      why: `Only ${quantified} measurable result${quantified === 1 ? "" : "s"} detected. Add numbers — %, users, latency, revenue — so impact is provable.`,
+      target: "experience",
+      show: quantified < 3,
+    },
+    {
+      id: "skills",
+      title: "Add in-demand skills to your Skills section",
+      priority: "High",
+      ats: 5,
+      why: missingTech.length
+        ? `Your resume is missing common keywords such as ${missingTech.join(", ")}, which ATS filters screen for.`
+        : "Broaden your skills coverage for the roles you target.",
+      target: "skills",
+      show: resume.skills.length < 8,
+    },
+    {
+      id: "projects",
+      title: "Add at least two strong projects",
+      priority: "High",
+      ats: 7,
+      why: "Projects with a tech stack and outcome are the fastest way to prove hands-on ability when experience is thin.",
+      target: "projects",
+      show: resume.projects.length < 2,
+    },
+    {
+      id: "verbs",
+      title: "Start bullets with strong action verbs",
+      priority: "Medium",
+      ats: 4,
+      why: "Several bullets begin with passive phrasing. Lead with verbs like Built, Reduced, Led to signal ownership.",
+      target: "experience",
+      show:
+        bullets.length > 0 &&
+        bullets.filter((b) =>
+          b.split(/\s+/).slice(0, 2).some((w) => ACTION_VERBS.has(w.toLowerCase().replace(/[^a-z]/g, ""))),
+        ).length /
+          bullets.length <
+          0.7,
+    },
+    {
+      id: "links",
+      title: "Add LinkedIn and GitHub links",
+      priority: "Medium",
+      ats: 3,
+      why: "Recruiters check profiles before replying. Missing links reduce credibility and callback rate.",
+      target: "personal",
+      show: !resume.linkedin || !(resume.github || resume.portfolio),
+    },
+    {
+      id: "buzz",
+      title: "Remove filler buzzwords",
+      priority: "Low",
+      ats: 2,
+      why: `Detected ${buzz.length} generic phrase${buzz.length === 1 ? "" : "s"} (e.g. ${buzz.slice(0, 2).join(", ") || "team player"}) that add no ATS value.`,
+      target: "summary",
+      show: buzz.length > 0,
+    },
+    {
+      id: "certs",
+      title: "Add a relevant certification",
+      priority: "Low",
+      ats: 3,
+      why: "Cloud or framework certifications raise keyword density and pass more automated filters.",
+      target: "certifications",
+      show: resume.certifications.length === 0,
+    },
+  ];
+
+  const order = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+  return list.filter((r) => r.show).sort((a, b) => order[a.priority] - order[b.priority]);
+}
+
+export function scoreExplanations(resume, score) {
+  const text = resumeText(resume).toLowerCase();
+  const missingTech = TECH_HINTS.filter((t) => !text.includes(t)).slice(0, 3);
+  const quantified = (resumeText(resume).match(/\d+%|\d+x|\d{2,}\+|\$\d+/gi) ?? []).length;
+  const ws = words(resume);
+  const buzz = ws.filter((w) => BUZZWORDS.has(w)).length;
+  return {
+    ats:
+      missingTech.length > 0
+        ? `Held back by missing keywords like ${missingTech.join(", ")} and ${quantified < 3 ? "few measurable achievements" : "thin section coverage"}.`
+        : "Strong keyword coverage across your target role.",
+    grammar:
+      buzz > 0
+        ? `${buzz} filler phrase${buzz === 1 ? "" : "s"} detected — tighten wording for a cleaner read.`
+        : "Clean, consistent phrasing with no filler detected.",
+    impact:
+      quantified < 3
+        ? `Only ${quantified} quantified result${quantified === 1 ? "" : "s"}. Add numbers to your top bullets.`
+        : "Good use of metrics to prove outcomes.",
+    readability:
+      ws.length > 700
+        ? "Resume runs long — trim to keep recruiters skimming to the end."
+        : ws.length < 250
+          ? "Too sparse — add detail to experience and projects."
+          : "Length and structure are easy to skim.",
+    overall:
+      typeof score?.overall === "number"
+        ? `Overall score reflects ATS ${score.ats}, grammar ${score.grammar} and impact ${score.impact}.`
+        : "Run an analysis to generate your score.",
+  };
+}
