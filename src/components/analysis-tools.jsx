@@ -309,107 +309,128 @@ function scoreCategories(r) {
   return { technical, leadership, projects, communication, impact, consistency };
 }
 
+export { scoreCategories };
+
 export function ResumeRadar({ resume }) {
   const s = useMemo(() => scoreCategories(resume), [resume]);
   const cats = [
-    { key: "technical", label: "Technical Skills", value: s.technical },
+    { key: "technical", label: "Technical", value: s.technical },
     { key: "leadership", label: "Leadership", value: s.leadership },
     { key: "projects", label: "Projects", value: s.projects },
     { key: "communication", label: "Communication", value: s.communication },
-    { key: "impact", label: "Impact & Metrics", value: s.impact },
-    { key: "consistency", label: "Profile Complete", value: s.consistency },
+    { key: "impact", label: "Impact", value: s.impact },
+    { key: "consistency", label: "Profile", value: s.consistency },
   ];
+  const total = cats.reduce((n, c) => n + c.value, 0);
+  const avg = Math.round(total / cats.length);
 
-  // Simple radar polygon coords
-  const size = 200;
+  const size = 300;
   const cx = size / 2;
   const cy = size / 2;
-  const R = 80;
-  const points = cats
-    .map((c, i) => {
-      const angle = (Math.PI * 2 * i) / cats.length - Math.PI / 2;
-      const r = (c.value / 100) * R;
-      return `${cx + Math.cos(angle) * r},${cy + Math.sin(angle) * r}`;
-    })
-    .join(" ");
-  const gridLevels = [0.33, 0.66, 1];
+  const R = 104;
+  const pt = (i, ratio) => {
+    const angle = (Math.PI * 2 * i) / cats.length - Math.PI / 2;
+    return [cx + Math.cos(angle) * R * ratio, cy + Math.sin(angle) * R * ratio];
+  };
+  const poly = (ratios) => ratios.map((r, i) => pt(i, r).join(",")).join(" ");
+  const points = poly(cats.map((c) => Math.max(c.value, 2) / 100));
+
+  const weakest = [...cats].sort((a, b) => a.value - b.value)[0];
 
   return (
     <Card
       icon={<Radar className="h-4 w-4" />}
       title="Resume Strength Radar"
-      subtitle="How balanced your resume is across the dimensions recruiters scan for"
+      subtitle="Balance across the six dimensions recruiters scan"
     >
-      <div className="grid h-full content-center gap-4 md:grid-cols-[200px_1fr] md:items-center">
-        <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto h-52 w-52">
-          {gridLevels.map((g, gi) => (
-            <polygon
-              key={gi}
-              points={cats
-                .map((_, i) => {
-                  const angle = (Math.PI * 2 * i) / cats.length - Math.PI / 2;
-                  return `${cx + Math.cos(angle) * R * g},${cy + Math.sin(angle) * R * g}`;
-                })
-                .join(" ")}
-              fill="none"
-              stroke="hsl(220 20% 88%)"
-              strokeWidth={1}
-            />
-          ))}
-          {cats.map((_, i) => {
-            const angle = (Math.PI * 2 * i) / cats.length - Math.PI / 2;
-            return (
-              <line
-                key={i}
-                x1={cx}
-                y1={cy}
-                x2={cx + Math.cos(angle) * R}
-                y2={cy + Math.sin(angle) * R}
-                stroke="hsl(220 20% 90%)"
-                strokeWidth={1}
-              />
-            );
-          })}
-          <polygon
-            points={points}
-            fill="rgba(99,102,241,0.25)"
-            stroke="rgb(99,102,241)"
-            strokeWidth={2}
-          />
-          {cats.map((c, i) => {
-            const angle = (Math.PI * 2 * i) / cats.length - Math.PI / 2;
-            const r = (c.value / 100) * R;
-            return (
-              <circle
-                key={c.key}
-                cx={cx + Math.cos(angle) * r}
-                cy={cy + Math.sin(angle) * r}
-                r={3}
-                fill="rgb(79,70,229)"
-              />
-            );
-          })}
-        </svg>
-        <div className="grid grid-cols-1 gap-2">
-          {cats.map((c) => (
-            <div key={c.key} className="flex items-center gap-3">
-              <div className="w-32 shrink-0 text-xs font-medium text-foreground/90">{c.label}</div>
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
-                <div
-                  className="h-full rounded-full gradient-primary transition-[width] duration-700"
-                  style={{ width: `${c.value}%` }}
-                />
-              </div>
-              <div className="w-8 text-right text-[11px] font-semibold tabular-nums text-muted-foreground">
-                {c.value}
-              </div>
-            </div>
-          ))}
+      {total === 0 ? (
+        <div className="grid flex-1 place-items-center rounded-2xl border border-dashed border-border bg-surface/60 p-8 text-center">
+          <div className="max-w-[260px]">
+            <Radar className="mx-auto h-6 w-6 text-muted-foreground" />
+            <div className="mt-3 text-sm font-semibold">Not enough resume data yet</div>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Add skills, experience or a project and your strength profile will appear here.
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-1 flex-col">
+          <div className="relative mx-auto w-full max-w-[340px]">
+            <svg viewBox={`0 0 ${size} ${size}`} className="w-full">
+              <defs>
+                <linearGradient id="radarFill" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="rgb(99,102,241)" stopOpacity="0.38" />
+                  <stop offset="100%" stopColor="rgb(59,130,246)" stopOpacity="0.18" />
+                </linearGradient>
+              </defs>
+              {[0.25, 0.5, 0.75, 1].map((g) => (
+                <polygon
+                  key={g}
+                  points={poly(cats.map(() => g))}
+                  fill={g === 1 ? "rgba(99,102,241,0.03)" : "none"}
+                  stroke="hsl(220 20% 89%)"
+                  strokeWidth={1}
+                />
+              ))}
+              {cats.map((c, i) => {
+                const [x, y] = pt(i, 1);
+                const [lx, ly] = pt(i, 1.22);
+                return (
+                  <g key={c.key}>
+                    <line x1={cx} y1={cy} x2={x} y2={y} stroke="hsl(220 20% 92%)" strokeWidth={1} />
+                    <text
+                      x={lx}
+                      y={ly}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-muted-foreground"
+                      style={{ fontSize: 11, fontWeight: 600 }}
+                    >
+                      {c.label}
+                    </text>
+                    <text
+                      x={lx}
+                      y={ly + 12}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-foreground"
+                      style={{ fontSize: 11, fontWeight: 700 }}
+                    >
+                      {c.value}
+                    </text>
+                  </g>
+                );
+              })}
+              <polygon
+                points={points}
+                fill="url(#radarFill)"
+                stroke="rgb(79,70,229)"
+                strokeWidth={2}
+                strokeLinejoin="round"
+              />
+              {cats.map((c, i) => {
+                const [x, y] = pt(i, Math.max(c.value, 2) / 100);
+                return <circle key={c.key} cx={x} cy={y} r={3.5} fill="rgb(79,70,229)" />;
+              })}
+            </svg>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface/60 px-3 py-2">
+            <span className="text-[12px] text-muted-foreground">
+              Balance score <span className="font-bold text-foreground">{avg}/100</span>
+            </span>
+            <span className="text-[12px] text-muted-foreground">
+              Weakest area:{" "}
+              <span className="font-semibold text-rose-600">
+                {weakest.label} ({weakest.value})
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  3. Job Match Simulator                                             */
@@ -470,14 +491,25 @@ function companyScore(cats, c, r) {
   return Math.max(30, Math.min(97, Math.round(base + bonus)));
 }
 
+function toneFor(score) {
+  if (score >= 80) return { bar: "bg-emerald-500", text: "text-emerald-600", chip: "bg-emerald-50 text-emerald-700" };
+  if (score >= 65) return { bar: "bg-sky-500", text: "text-sky-600", chip: "bg-sky-50 text-sky-700" };
+  if (score >= 50) return { bar: "bg-orange-500", text: "text-orange-600", chip: "bg-orange-50 text-orange-700" };
+  return { bar: "bg-rose-500", text: "text-rose-600", chip: "bg-rose-50 text-rose-700" };
+}
+
 export function JobMatchSimulator({ resume }) {
   const cats = useMemo(() => scoreCategories(resume), [resume]);
   const rows = useMemo(
     () =>
-      COMPANIES.map((c) => ({
-        company: c,
-        score: companyScore(cats, c, resume),
-      })).sort((a, b) => b.score - a.score),
+      COMPANIES.map((c) => {
+        const score = companyScore(cats, c, resume);
+        return {
+          company: c,
+          score,
+          interview: Math.max(5, Math.min(85, Math.round((score - 40) * 1.35))),
+        };
+      }).sort((a, b) => b.score - a.score),
     [cats, resume],
   );
 
@@ -485,38 +517,47 @@ export function JobMatchSimulator({ resume }) {
     <Card
       icon={<Building2 className="h-4 w-4" />}
       title="Job Match Simulator"
-      subtitle="How your resume performs across five company archetypes"
+      subtitle="Match strength and estimated interview probability by company type"
     >
-      <div className="grid h-full content-start gap-1.5">
-        {rows.map(({ company, score }) => (
-          <div
-            key={company.key}
-            className="rounded-xl border border-border/60 bg-surface/50 p-2.5 transition hover:border-primary/40 hover:bg-white"
-          >
-            <div className="flex items-center gap-3">
-              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
-                {company.icon}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold">{company.label}</div>
-                  <div className="text-sm font-bold tabular-nums gradient-text">{score}%</div>
+      <div className="grid flex-1 content-start gap-2">
+        {rows.map(({ company, score, interview }) => {
+          const t = toneFor(score);
+          return (
+            <div
+              key={company.key}
+              className="rounded-xl border border-border/60 bg-surface/50 p-3 transition hover:border-primary/40 hover:bg-card"
+            >
+              <div className="flex items-center gap-3">
+                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  {company.icon}
                 </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white">
-                  <div
-                    className="h-full rounded-full gradient-primary transition-[width] duration-700"
-                    style={{ width: `${score}%` }}
-                  />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="truncate text-sm font-semibold">{company.label}</div>
+                    <div className={`text-sm font-bold tabular-nums ${t.text}`}>{score}%</div>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border/60">
+                    <div
+                      className={`h-full rounded-full ${t.bar} transition-[width] duration-700`}
+                      style={{ width: `${score}%` }}
+                    />
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] text-muted-foreground">{company.note}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${t.chip}`}>
+                      ~{interview}% interview odds
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-1.5 text-[11px] text-muted-foreground">{company.note}</div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Card>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  4. Resume Analytics                                                */
@@ -525,8 +566,7 @@ export function ResumeAnalytics({ resume }) {
   const stats = useMemo(() => {
     const ws = words(resume);
     const wordCount = ws.length;
-    const readingTime = Math.max(1, Math.round(wordCount / 220));
-    const actionVerbCount = ws.filter((w) => ACTION_VERBS.has(w)).length;
+    const readingSec = Math.max(10, Math.round((wordCount / 220) * 60));
     const bullets = [
       ...resume.projects.map((p) => p.description),
       ...resume.experience.flatMap((e) => e.bullets),
@@ -540,42 +580,70 @@ export function ResumeAnalytics({ resume }) {
     ).length;
     const actionVerbPct = bullets.length === 0 ? 0 : Math.round((bulletsWithVerb / bullets.length) * 100);
     const buzzCount = ws.filter((w) => BUZZWORDS.has(w)).length;
-    const quantified = (resumeText(resume).match(/\d+%|\d+x|\d{2,}\+|\$\d+|\d+ users|\d+ ms/gi) ?? []).length;
-    const grammar = Math.max(60, Math.min(99, 92 - buzzCount * 3 + Math.min(5, quantified)));
-    const ats = Math.max(40, Math.min(97, 55 + Math.min(20, resume.skills.length) + Math.min(10, quantified * 2)));
-    return { wordCount, readingTime, actionVerbCount, actionVerbPct, buzzCount, grammar, ats, quantified };
+    const sectionsTotal = 8;
+    const sectionsDone = [
+      !!resume.summary?.trim(),
+      resume.skills.length > 0,
+      resume.experience.length > 0,
+      resume.projects.length > 0,
+      resume.education.length > 0,
+      resume.certifications.length > 0,
+      resume.achievements.length > 0,
+      !!(resume.linkedin || resume.github || resume.portfolio),
+    ].filter(Boolean).length;
+    const uniqueTech = new Set(
+      ws.filter((w) => TECH_HINTS.includes(w)),
+    ).size;
+    const keywordDensity = wordCount === 0 ? 0 : Math.round((uniqueTech / TECH_HINTS.length) * 100);
+    const pages = Math.max(0.5, Math.round((wordCount / 500) * 10) / 10);
+    return { wordCount, readingSec, actionVerbPct, buzzCount, sectionsDone, sectionsTotal, keywordDensity, pages };
   }, [resume]);
 
-  const cells = [
-    { label: "Words", value: `${stats.wordCount}`, icon: <TypeIcon className="h-3.5 w-3.5" />, tone: "text-indigo-600", hint: "Aim: 400-650" },
-    { label: "Reading time", value: `${stats.readingTime} min`, icon: <Timer className="h-3.5 w-3.5" />, tone: "text-sky-600" },
-    { label: "ATS", value: `${stats.ats}`, icon: <BarChart3 className="h-3.5 w-3.5" />, tone: "text-emerald-600" },
-    { label: "Grammar", value: `${stats.grammar}%`, icon: <Sparkles className="h-3.5 w-3.5" />, tone: "text-emerald-600" },
-    { label: "Action verbs", value: `${stats.actionVerbPct}%`, icon: <Rocket className="h-3.5 w-3.5" />, tone: "text-orange-600" },
-    { label: "Buzzwords", value: `${stats.buzzCount}`, icon: <Flame className="h-3.5 w-3.5" />, tone: stats.buzzCount > 2 ? "text-rose-600" : "text-emerald-600" },
+  const fmtTime = (s) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`);
+  const rows = [
+    { label: "Word count", value: `${stats.wordCount}`, hint: "Ideal 400–650", ok: stats.wordCount >= 400 && stats.wordCount <= 650, icon: <TypeIcon className="h-3.5 w-3.5" /> },
+    { label: "Reading time", value: fmtTime(stats.readingSec), hint: "Recruiters skim in ~30s", ok: stats.readingSec <= 180, icon: <Timer className="h-3.5 w-3.5" /> },
+    { label: "Sections completed", value: `${stats.sectionsDone}/${stats.sectionsTotal}`, hint: "Fill every core section", ok: stats.sectionsDone >= 6, icon: <Check className="h-3.5 w-3.5" /> },
+    { label: "Action verbs", value: `${stats.actionVerbPct}%`, hint: "Bullets starting strong", ok: stats.actionVerbPct >= 70, icon: <Rocket className="h-3.5 w-3.5" /> },
+    { label: "Buzzwords", value: `${stats.buzzCount}`, hint: "Keep under 3", ok: stats.buzzCount < 3, icon: <Flame className="h-3.5 w-3.5" /> },
+    { label: "Keyword density", value: `${stats.keywordDensity}%`, hint: "Tech coverage vs market", ok: stats.keywordDensity >= 20, icon: <Target className="h-3.5 w-3.5" /> },
+    { label: "Resume length", value: `${stats.pages} page${stats.pages === 1 ? "" : "s"}`, hint: "1 page under 8 yrs exp", ok: stats.pages <= 2, icon: <BarChart3 className="h-3.5 w-3.5" /> },
   ];
 
   return (
     <Card
       icon={<BarChart3 className="h-4 w-4" />}
       title="Resume Analytics"
-      subtitle="Live counts and quality signals recalculated on every edit"
+      subtitle="Structural signals recalculated on every edit"
     >
-      <div className="grid h-full content-between auto-rows-min grid-cols-2 gap-2 md:grid-cols-3">
-        {cells.map((c) => (
-          <div key={c.label} className="flex flex-col justify-center rounded-xl border border-border/60 bg-surface/60 p-3">
-            <div className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest ${c.tone}`}>
-              {c.icon}
-              {c.label}
+      <ul className="flex flex-1 flex-col divide-y divide-border/60">
+        {rows.map((r) => (
+          <li key={r.label} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+            <div
+              className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${
+                r.ok ? "bg-emerald-50 text-emerald-600" : "bg-orange-50 text-orange-600"
+              }`}
+            >
+              {r.icon}
             </div>
-            <div className="mt-1 text-xl font-bold tracking-tight text-foreground">{c.value}</div>
-            {c.hint && <div className="text-[10px] text-muted-foreground">{c.hint}</div>}
-          </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12.5px] font-semibold">{r.label}</div>
+              <div className="truncate text-[11px] text-muted-foreground">{r.hint}</div>
+            </div>
+            <div
+              className={`shrink-0 text-[15px] font-bold tabular-nums ${
+                r.ok ? "text-foreground" : "text-orange-600"
+              }`}
+            >
+              {r.value}
+            </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </Card>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  5. Missing Sections                                                */
@@ -691,4 +759,137 @@ export function AnalysisSectionHeader() {
       </div>
     </div>
   );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Actionable AI recommendations                                      */
+/* ------------------------------------------------------------------ */
+export function buildRecommendations(resume) {
+  const text = resumeText(resume).toLowerCase();
+  const quantified = (resumeText(resume).match(/\d+%|\d+x|\d{2,}\+|\$\d+/gi) ?? []).length;
+  const ws = words(resume);
+  const missingTech = TECH_HINTS.filter((t) => !text.includes(t)).slice(0, 4);
+  const bullets = [
+    ...resume.projects.map((p) => p.description),
+    ...resume.experience.flatMap((e) => e.bullets),
+  ].filter(Boolean);
+  const buzz = ws.filter((w) => BUZZWORDS.has(w));
+
+  const list = [
+    {
+      id: "summary",
+      title: "Write a targeted professional summary",
+      priority: "Critical",
+      ats: 6,
+      why: "Your resume has no 2–3 line summary, so ATS parsers and recruiters miss your positioning in the first scan.",
+      target: "summary",
+      show: (resume.summary ?? "").trim().length < 40,
+    },
+    {
+      id: "quantify",
+      title: "Quantify your achievements",
+      priority: "Critical",
+      ats: 8,
+      why: `Only ${quantified} measurable result${quantified === 1 ? "" : "s"} detected. Add numbers — %, users, latency, revenue — so impact is provable.`,
+      target: "experience",
+      show: quantified < 3,
+    },
+    {
+      id: "skills",
+      title: "Add in-demand skills to your Skills section",
+      priority: "High",
+      ats: 5,
+      why: missingTech.length
+        ? `Your resume is missing common keywords such as ${missingTech.join(", ")}, which ATS filters screen for.`
+        : "Broaden your skills coverage for the roles you target.",
+      target: "skills",
+      show: resume.skills.length < 8,
+    },
+    {
+      id: "projects",
+      title: "Add at least two strong projects",
+      priority: "High",
+      ats: 7,
+      why: "Projects with a tech stack and outcome are the fastest way to prove hands-on ability when experience is thin.",
+      target: "projects",
+      show: resume.projects.length < 2,
+    },
+    {
+      id: "verbs",
+      title: "Start bullets with strong action verbs",
+      priority: "Medium",
+      ats: 4,
+      why: "Several bullets begin with passive phrasing. Lead with verbs like Built, Reduced, Led to signal ownership.",
+      target: "experience",
+      show:
+        bullets.length > 0 &&
+        bullets.filter((b) =>
+          b.split(/\s+/).slice(0, 2).some((w) => ACTION_VERBS.has(w.toLowerCase().replace(/[^a-z]/g, ""))),
+        ).length /
+          bullets.length <
+          0.7,
+    },
+    {
+      id: "links",
+      title: "Add LinkedIn and GitHub links",
+      priority: "Medium",
+      ats: 3,
+      why: "Recruiters check profiles before replying. Missing links reduce credibility and callback rate.",
+      target: "personal",
+      show: !resume.linkedin || !(resume.github || resume.portfolio),
+    },
+    {
+      id: "buzz",
+      title: "Remove filler buzzwords",
+      priority: "Low",
+      ats: 2,
+      why: `Detected ${buzz.length} generic phrase${buzz.length === 1 ? "" : "s"} (e.g. ${buzz.slice(0, 2).join(", ") || "team player"}) that add no ATS value.`,
+      target: "summary",
+      show: buzz.length > 0,
+    },
+    {
+      id: "certs",
+      title: "Add a relevant certification",
+      priority: "Low",
+      ats: 3,
+      why: "Cloud or framework certifications raise keyword density and pass more automated filters.",
+      target: "certifications",
+      show: resume.certifications.length === 0,
+    },
+  ];
+
+  const order = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+  return list.filter((r) => r.show).sort((a, b) => order[a.priority] - order[b.priority]);
+}
+
+export function scoreExplanations(resume, score) {
+  const text = resumeText(resume).toLowerCase();
+  const missingTech = TECH_HINTS.filter((t) => !text.includes(t)).slice(0, 3);
+  const quantified = (resumeText(resume).match(/\d+%|\d+x|\d{2,}\+|\$\d+/gi) ?? []).length;
+  const ws = words(resume);
+  const buzz = ws.filter((w) => BUZZWORDS.has(w)).length;
+  return {
+    ats:
+      missingTech.length > 0
+        ? `Held back by missing keywords like ${missingTech.join(", ")} and ${quantified < 3 ? "few measurable achievements" : "thin section coverage"}.`
+        : "Strong keyword coverage across your target role.",
+    grammar:
+      buzz > 0
+        ? `${buzz} filler phrase${buzz === 1 ? "" : "s"} detected — tighten wording for a cleaner read.`
+        : "Clean, consistent phrasing with no filler detected.",
+    impact:
+      quantified < 3
+        ? `Only ${quantified} quantified result${quantified === 1 ? "" : "s"}. Add numbers to your top bullets.`
+        : "Good use of metrics to prove outcomes.",
+    readability:
+      ws.length > 700
+        ? "Resume runs long — trim to keep recruiters skimming to the end."
+        : ws.length < 250
+          ? "Too sparse — add detail to experience and projects."
+          : "Length and structure are easy to skim.",
+    overall:
+      typeof score?.overall === "number"
+        ? `Overall score reflects ATS ${score.ats}, grammar ${score.grammar} and impact ${score.impact}.`
+        : "Run an analysis to generate your score.",
+  };
 }
