@@ -17,7 +17,10 @@ import {
   Sparkles,
   Search,
   Plus,
+  ChevronDown,
+  ArrowRight,
 } from "lucide-react";
+
 
 /* ------------------------------------------------------------------ */
 /*  Text helpers                                                       */
