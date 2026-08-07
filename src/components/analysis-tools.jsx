@@ -17,7 +17,10 @@ import {
   Sparkles,
   Search,
   Plus,
+  ChevronDown,
+  ArrowRight,
 } from "lucide-react";
+
 
 /* ------------------------------------------------------------------ */
 /*  Text helpers                                                       */
@@ -142,93 +145,91 @@ export function AtsHeatmap({
   onAddSkill,
 }) {
   const [jd, setJd] = useState(DEFAULT_JD);
+  const [editing, setEditing] = useState(false);
   const analysis = useMemo(() => {
     const rTokens = new Set(words(resume).map(normalize));
     const skills = new Set(resume.skills.map((s) => normalize(s)));
+    const full = resumeText(resume).toLowerCase();
     const kws = extractJdKeywords(jd);
     const rows = kws.map((k) => {
       const key = normalize(k);
-      const inSkills = skills.has(key);
-      const inText = rTokens.has(key) || resumeText(resume).toLowerCase().includes(k);
-      return { keyword: k, found: inSkills || inText, strong: inSkills };
+      if (skills.has(key)) return { keyword: k, state: "matched" };
+      if (rTokens.has(key) || full.includes(k)) return { keyword: k, state: "partial" };
+      return { keyword: k, state: "missing" };
     });
-    const overused = (() => {
-      const counts = new Map();
-      for (const w of words(resume)) {
-        if (w.length < 4 || STOP.has(w)) continue;
-        counts.set(w, (counts.get(w) ?? 0) + 1);
-      }
-      return [...counts.entries()]
-        .filter(([, c]) => c >= 4)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4)
-        .map(([w, c]) => ({ word: w, count: c }));
-    })();
-    const found = rows.filter((r) => r.found).length;
-    return {
-      rows,
-      overused,
-      match: rows.length === 0 ? 0 : Math.round((found / rows.length) * 100),
-    };
+    const matched = rows.filter((r) => r.state === "matched").length;
+    const partial = rows.filter((r) => r.state === "partial").length;
+    const missing = rows.filter((r) => r.state === "missing").length;
+    const coverage =
+      rows.length === 0 ? 0 : Math.round(((matched + partial * 0.5) / rows.length) * 100);
+    return { rows, matched, partial, missing, coverage };
   }, [jd, resume]);
 
-  const missing = analysis.rows.filter((r) => !r.found);
+  const missingRows = analysis.rows.filter((r) => r.state === "missing");
+
+  const CHIP = {
+    matched: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    partial: "border-amber-200 bg-amber-50 text-amber-700",
+    missing: "border-rose-200 bg-rose-50 text-rose-700",
+  };
 
   return (
     <Card
       icon={<Target className="h-4 w-4" />}
-      title="ATS Keyword Heatmap"
-      subtitle="Paste a job description — see which keywords your resume actually hits"
+      title="ATS Keyword Coverage"
+      subtitle="How well your resume mirrors the language of the role"
     >
-      <textarea
-        value={jd}
-        onChange={(e) => setJd(e.target.value)}
-        rows={4}
-        className="w-full min-h-[92px] max-h-[150px] flex-1 resize-none rounded-xl border border-border/60 bg-surface p-3 text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-      />
-      <div className="mt-3 flex items-center justify-between">
-        <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          Keyword Match
+      <div className="flex flex-wrap items-end gap-6">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Overall coverage
+          </div>
+          <div className="text-[34px] font-bold leading-none tracking-tight">{analysis.coverage}%</div>
         </div>
-        <div className="text-lg font-bold gradient-text">{analysis.match}%</div>
-      </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface">
-        <div
-          className="h-full rounded-full gradient-primary transition-[width] duration-700"
-          style={{ width: `${analysis.match}%` }}
-        />
+        <div className="flex min-w-[160px] flex-1 flex-col gap-2">
+          <div className="h-2 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="h-full rounded-full gradient-primary transition-[width] duration-700 ease-out"
+              style={{ width: `${analysis.coverage}%` }}
+            />
+          </div>
+          <div className="flex flex-wrap gap-3 text-[11.5px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <i className="h-2 w-2 rounded-full bg-emerald-500" /> Matched {analysis.matched}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <i className="h-2 w-2 rounded-full bg-amber-500" /> Partial {analysis.partial}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <i className="h-2 w-2 rounded-full bg-rose-500" /> Missing {analysis.missing}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-1.5">
         {analysis.rows.map((r) => (
           <span
             key={r.keyword}
-            className={
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition " +
-              (r.found
-                ? r.strong
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-emerald-100 bg-emerald-50/60 text-emerald-700"
-                : "border-rose-200 bg-rose-50 text-rose-700")
-            }
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${CHIP[r.state]}`}
           >
-            {r.found ? <Check className="h-3 w-3" /> : <XIcon className="h-3 w-3" />}
+            {r.state === "missing" ? <XIcon className="h-3 w-3" /> : <Check className="h-3 w-3" />}
             {r.keyword}
           </span>
         ))}
       </div>
 
-      {missing.length > 0 && onAddSkill && (
+      {missingRows.length > 0 && onAddSkill && (
         <div className="mt-4 rounded-xl border border-border/60 bg-surface/60 p-3">
           <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Suggested skills to add
+            Top missing skills — one click to add
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {missing.slice(0, 6).map((m) => (
+            {missingRows.slice(0, 6).map((m) => (
               <button
                 key={m.keyword}
                 onClick={() => onAddSkill(m.keyword)}
-                className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-white px-2 py-0.5 text-[11px] font-medium text-primary transition hover:bg-primary hover:text-white"
+                className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-card px-2 py-0.5 text-[11px] font-medium text-primary transition hover:bg-primary hover:text-primary-foreground"
               >
                 <Plus className="h-3 w-3" />
                 {m.keyword}
@@ -238,25 +239,26 @@ export function AtsHeatmap({
         </div>
       )}
 
-      {analysis.overused.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Overused
-          </span>
-          {analysis.overused.map((o) => (
-            <span
-              key={o.word}
-              className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700"
-            >
-              <Flame className="h-3 w-3" />
-              {o.word} · {o.count}×
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="mt-4">
+        <button
+          onClick={() => setEditing((e) => !e)}
+          className="text-[12px] font-semibold text-primary transition hover:opacity-80"
+        >
+          {editing ? "Hide job description" : "Compare against a job description"}
+        </button>
+        {editing && (
+          <textarea
+            value={jd}
+            onChange={(e) => setJd(e.target.value)}
+            rows={4}
+            className="mt-2 max-h-[150px] w-full resize-none rounded-xl border border-border/60 bg-surface p-3 text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        )}
+      </div>
     </Card>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  2. Resume Strength Radar                                           */
@@ -498,15 +500,33 @@ function toneFor(score) {
   return { bar: "bg-rose-500", text: "text-rose-600", chip: "bg-rose-50 text-rose-700" };
 }
 
+const CAT_LABEL = {
+  technical: "Technical depth",
+  leadership: "Leadership signal",
+  projects: "Project portfolio",
+  communication: "Communication & profile",
+  impact: "Quantified impact",
+};
+
 export function JobMatchSimulator({ resume }) {
   const cats = useMemo(() => scoreCategories(resume), [resume]);
+  const [open, setOpen] = useState(null);
   const rows = useMemo(
     () =>
       COMPANIES.map((c) => {
         const score = companyScore(cats, c, resume);
+        const ranked = Object.keys(c.weights)
+          .map((k) => ({ key: k, value: cats[k] ?? 0, weight: c.weights[k] }))
+          .sort((a, b) => b.value * b.weight - a.value * a.weight);
+        const strength = ranked[0];
+        const weakness = ranked[ranked.length - 1];
+        const missingKw = c.keywords.filter((k) => !resumeText(resume).toLowerCase().includes(k)).slice(0, 3);
         return {
           company: c,
           score,
+          strength,
+          weakness,
+          missingKw,
           interview: Math.max(5, Math.min(85, Math.round((score - 40) * 1.35))),
         };
       }).sort((a, b) => b.score - a.score),
@@ -520,21 +540,30 @@ export function JobMatchSimulator({ resume }) {
       subtitle="Match strength and estimated interview probability by company type"
     >
       <div className="grid flex-1 content-start gap-2">
-        {rows.map(({ company, score, interview }) => {
+        {rows.map(({ company, score, interview, strength, weakness, missingKw }) => {
           const t = toneFor(score);
+          const expanded = open === company.key;
           return (
             <div
               key={company.key}
-              className="rounded-xl border border-border/60 bg-surface/50 p-3 transition hover:border-primary/40 hover:bg-card"
+              className="rounded-xl border border-border/60 bg-surface/50 transition hover:border-primary/40 hover:bg-card"
             >
-              <div className="flex items-center gap-3">
+              <button
+                onClick={() => setOpen(expanded ? null : company.key)}
+                className="flex w-full items-center gap-3 p-3 text-left"
+              >
                 <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                   {company.icon}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <div className="truncate text-sm font-semibold">{company.label}</div>
-                    <div className={`text-sm font-bold tabular-nums ${t.text}`}>{score}%</div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold tabular-nums ${t.text}`}>{score}%</span>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+                      />
+                    </div>
                   </div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border/60">
                     <div
@@ -549,7 +578,31 @@ export function JobMatchSimulator({ resume }) {
                     </span>
                   </div>
                 </div>
-              </div>
+              </button>
+              {expanded && (
+                <div className="grid gap-1.5 border-t border-border/60 px-3 py-2.5 text-[11.5px] leading-relaxed">
+                  <div>
+                    <span className="font-semibold text-emerald-700">Strength: </span>
+                    <span className="text-muted-foreground">
+                      {CAT_LABEL[strength.key]} ({strength.value}/100)
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-rose-700">Weakness: </span>
+                    <span className="text-muted-foreground">
+                      {CAT_LABEL[weakness.key]} ({weakness.value}/100)
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-primary">Improve: </span>
+                    <span className="text-muted-foreground">
+                      {missingKw.length
+                        ? `Work ${missingKw.join(", ")} into your bullets and skills.`
+                        : `Deepen ${CAT_LABEL[weakness.key].toLowerCase()} with one more quantified example.`}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -557,6 +610,7 @@ export function JobMatchSimulator({ resume }) {
     </Card>
   );
 }
+
 
 
 /* ------------------------------------------------------------------ */
@@ -648,98 +702,126 @@ export function ResumeAnalytics({ resume }) {
 /* ------------------------------------------------------------------ */
 /*  5. Missing Sections                                                */
 /* ------------------------------------------------------------------ */
-export function MissingSectionsCard({ resume }) {
+export function MissingSectionsCard({ resume, onFix }) {
   const items = useMemo(() => {
     const list = [
       {
         label: "Professional Summary",
+        target: "summary",
         ok: resume.summary.trim().length > 40,
-        impact: "+6 ATS",
-        note: "A 1-2 sentence pitch tuned to your target role.",
+        impact: 6,
+        note: "A 1–2 sentence pitch tuned to your target role — the first thing parsers read.",
       },
       {
         label: "LinkedIn URL",
+        target: "personal",
         ok: !!resume.linkedin,
-        impact: "+3 ATS",
-        note: "Recruiters look for this every time.",
+        impact: 3,
+        note: "Recruiters look for this every time before replying.",
       },
       {
         label: "GitHub / Portfolio",
+        target: "personal",
         ok: !!resume.github || !!resume.portfolio,
-        impact: "+5 ATS",
-        note: "Proof of work matters more than words.",
+        impact: 5,
+        note: "Proof of work matters more than adjectives.",
       },
       {
         label: "Projects (2+)",
+        target: "projects",
         ok: resume.projects.length >= 2,
-        impact: "+8 ATS",
-        note: "Two projects with tech + metrics unlocks stronger matches.",
+        impact: 8,
+        note: "Two projects with tech stack + outcome unlock stronger matches.",
       },
       {
         label: "Quantified Achievements",
+        target: "experience",
         ok: /\d+%|\d+x|\d{2,}\+|\$\d+/.test(resumeText(resume)),
-        impact: "+7 ATS",
-        note: "Numbers signal impact. Add %, users, latency, revenue.",
+        impact: 7,
+        note: "Numbers signal impact. Add %, users, latency or revenue.",
       },
       {
         label: "Certifications",
+        target: "certifications",
         ok: resume.certifications.length > 0,
-        impact: "+3 ATS",
+        impact: 3,
         note: "Cloud / framework certs boost keyword density.",
       },
       {
         label: "Internships / Experience",
+        target: "experience",
         ok: resume.experience.length > 0,
-        impact: "+6 ATS",
+        impact: 6,
         note: "Even short roles show real-world context.",
       },
     ];
     return list;
   }, [resume]);
 
-  const missing = items.filter((i) => !i.ok);
+  const missing = items.filter((i) => !i.ok).sort((a, b) => b.impact - a.impact);
   const done = items.filter((i) => i.ok);
+  const potential = missing.reduce((n, m) => n + m.impact, 0);
 
   return (
     <Card
       icon={<AlertTriangle className="h-4 w-4" />}
-      title="Missing Sections & Signals"
-      subtitle={`${missing.length} gaps · ${done.length} looking good`}
+      title="Section checklist"
+      subtitle={
+        missing.length === 0
+          ? "Every core section is complete"
+          : `${missing.length} gaps worth up to +${potential} ATS points`
+      }
     >
-      <ul className="flex max-h-[430px] flex-col gap-1.5 overflow-y-auto pr-0.5">
-        {missing.map((m) => (
-          <li
-            key={m.label}
-            className="flex items-start gap-2.5 rounded-xl border border-rose-100 bg-rose-50/50 px-2.5 py-1.5"
-          >
-            <div className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-rose-100 text-rose-600">
-              <XIcon className="h-3 w-3" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-foreground">{m.label}</span>
-                <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold text-rose-600">
-                  {m.impact}
+      {missing.length === 0 ? (
+        <div className="grid flex-1 place-items-center rounded-2xl border border-dashed border-border bg-surface/60 p-8 text-center">
+          <div className="max-w-[260px]">
+            <Check className="mx-auto h-6 w-6 text-emerald-600" />
+            <div className="mt-3 text-sm font-semibold">All core sections complete</div>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Keep refining wording and metrics to push your score higher.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {missing.map((m) => (
+            <li
+              key={m.label}
+              className="group flex flex-col gap-2 rounded-xl border border-border/70 bg-surface/50 p-3 transition duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[13.5px] font-semibold leading-snug">{m.label}</span>
+                <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                  +{m.impact} ATS
                 </span>
               </div>
-              <div className="text-[11px] text-muted-foreground">{m.note}</div>
-            </div>
-          </li>
-        ))}
-        {done.slice(0, 3).map((d) => (
-          <li
-            key={d.label}
-            className="flex items-start gap-2.5 rounded-xl border border-transparent px-3 py-1.5 text-sm text-muted-foreground"
-          >
-            <div className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-600">
-              <Check className="h-3 w-3" />
-            </div>
-            <span className="line-through">{d.label}</span>
-          </li>
-        ))}
-      </ul>
+              <p className="text-[11.5px] leading-relaxed text-muted-foreground">{m.note}</p>
+              <button
+                onClick={() => onFix?.(m)}
+                className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-primary/30 bg-card px-2.5 py-1 text-[12px] font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground"
+              >
+                Fix <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {done.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {done.map((d) => (
+            <span
+              key={d.label}
+              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
+            >
+              <Check className="h-3 w-3" /> {d.label}
+            </span>
+          ))}
+        </div>
+      )}
     </Card>
   );
+
 }
 
 /* ------------------------------------------------------------------ */
@@ -892,4 +974,37 @@ export function scoreExplanations(resume, score) {
         ? `Overall score reflects ATS ${score.ats}, grammar ${score.grammar} and impact ${score.impact}.`
         : "Run an analysis to generate your score.",
   };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Your resume at a glance                                            */
+/* ------------------------------------------------------------------ */
+export function buildGlanceSummary(resume, score) {
+  const recs = buildRecommendations(resume);
+  const ats = typeof score?.ats === "number" ? score.ats : null;
+  const strengths = [];
+  if ((score?.grammar ?? 0) >= 70) strengths.push("clean grammar");
+  if (resume.skills.length >= 8) strengths.push("solid skills coverage");
+  if (resume.experience.length > 0) strengths.push("real work experience");
+  if (resume.projects.length >= 2) strengths.push("a strong project section");
+
+  const topFixes = recs.slice(0, 3).map((r) => r.title.toLowerCase());
+  const gain = recs.slice(0, 3).reduce((n, r) => n + r.ats, 0);
+  const projected = ats === null ? null : Math.min(96, ats + gain + 8);
+
+  const parts = [];
+  parts.push(
+    strengths.length
+      ? `Your resume has ${strengths.slice(0, 2).join(" and ")}`
+      : "Your resume is still early",
+  );
+  parts.push(
+    topFixes.length
+      ? `but is missing several ATS-critical signals. The biggest opportunities are ${topFixes.join(", ")}.`
+      : "and already clears every automated check we run.",
+  );
+  if (projected !== null && topFixes.length) {
+    parts.push(`Completing these could lift your ATS score from ${ats} to roughly ${projected - 4}–${projected}.`);
+  }
+  return { text: parts.join(" "), gain, projected, count: recs.length };
 }

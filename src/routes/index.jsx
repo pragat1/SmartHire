@@ -475,7 +475,9 @@ function SmartHireApp() {
               onAddSkill={addSkill}
               onDownload={() => window.print()}
               onReanalyze={() => void sendMessage("Re-analyze my resume and tell me what to improve.")}
+              onAskAi={(prompt) => void sendMessage(prompt)}
               onRestoreVersion={restoreVersion}
+
             />
           ) : (
             <main className="flex min-w-0 flex-1 flex-col gap-4 p-4 lg:flex-row lg:gap-5 lg:p-6">
