@@ -497,15 +497,33 @@ function toneFor(score) {
   return { bar: "bg-rose-500", text: "text-rose-600", chip: "bg-rose-50 text-rose-700" };
 }
 
+const CAT_LABEL = {
+  technical: "Technical depth",
+  leadership: "Leadership signal",
+  projects: "Project portfolio",
+  communication: "Communication & profile",
+  impact: "Quantified impact",
+};
+
 export function JobMatchSimulator({ resume }) {
   const cats = useMemo(() => scoreCategories(resume), [resume]);
+  const [open, setOpen] = useState(null);
   const rows = useMemo(
     () =>
       COMPANIES.map((c) => {
         const score = companyScore(cats, c, resume);
+        const ranked = Object.keys(c.weights)
+          .map((k) => ({ key: k, value: cats[k] ?? 0, weight: c.weights[k] }))
+          .sort((a, b) => b.value * b.weight - a.value * a.weight);
+        const strength = ranked[0];
+        const weakness = ranked[ranked.length - 1];
+        const missingKw = c.keywords.filter((k) => !resumeText(resume).toLowerCase().includes(k)).slice(0, 3);
         return {
           company: c,
           score,
+          strength,
+          weakness,
+          missingKw,
           interview: Math.max(5, Math.min(85, Math.round((score - 40) * 1.35))),
         };
       }).sort((a, b) => b.score - a.score),
@@ -519,21 +537,30 @@ export function JobMatchSimulator({ resume }) {
       subtitle="Match strength and estimated interview probability by company type"
     >
       <div className="grid flex-1 content-start gap-2">
-        {rows.map(({ company, score, interview }) => {
+        {rows.map(({ company, score, interview, strength, weakness, missingKw }) => {
           const t = toneFor(score);
+          const expanded = open === company.key;
           return (
             <div
               key={company.key}
-              className="rounded-xl border border-border/60 bg-surface/50 p-3 transition hover:border-primary/40 hover:bg-card"
+              className="rounded-xl border border-border/60 bg-surface/50 transition hover:border-primary/40 hover:bg-card"
             >
-              <div className="flex items-center gap-3">
+              <button
+                onClick={() => setOpen(expanded ? null : company.key)}
+                className="flex w-full items-center gap-3 p-3 text-left"
+              >
                 <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                   {company.icon}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <div className="truncate text-sm font-semibold">{company.label}</div>
-                    <div className={`text-sm font-bold tabular-nums ${t.text}`}>{score}%</div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold tabular-nums ${t.text}`}>{score}%</span>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+                      />
+                    </div>
                   </div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border/60">
                     <div
@@ -548,7 +575,31 @@ export function JobMatchSimulator({ resume }) {
                     </span>
                   </div>
                 </div>
-              </div>
+              </button>
+              {expanded && (
+                <div className="grid gap-1.5 border-t border-border/60 px-3 py-2.5 text-[11.5px] leading-relaxed">
+                  <div>
+                    <span className="font-semibold text-emerald-700">Strength: </span>
+                    <span className="text-muted-foreground">
+                      {CAT_LABEL[strength.key]} ({strength.value}/100)
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-rose-700">Weakness: </span>
+                    <span className="text-muted-foreground">
+                      {CAT_LABEL[weakness.key]} ({weakness.value}/100)
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-primary">Improve: </span>
+                    <span className="text-muted-foreground">
+                      {missingKw.length
+                        ? `Work ${missingKw.join(", ")} into your bullets and skills.`
+                        : `Deepen ${CAT_LABEL[weakness.key].toLowerCase()} with one more quantified example.`}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -556,6 +607,7 @@ export function JobMatchSimulator({ resume }) {
     </Card>
   );
 }
+
 
 
 /* ------------------------------------------------------------------ */
