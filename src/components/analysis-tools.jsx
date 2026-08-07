@@ -142,93 +142,91 @@ export function AtsHeatmap({
   onAddSkill,
 }) {
   const [jd, setJd] = useState(DEFAULT_JD);
+  const [editing, setEditing] = useState(false);
   const analysis = useMemo(() => {
     const rTokens = new Set(words(resume).map(normalize));
     const skills = new Set(resume.skills.map((s) => normalize(s)));
+    const full = resumeText(resume).toLowerCase();
     const kws = extractJdKeywords(jd);
     const rows = kws.map((k) => {
       const key = normalize(k);
-      const inSkills = skills.has(key);
-      const inText = rTokens.has(key) || resumeText(resume).toLowerCase().includes(k);
-      return { keyword: k, found: inSkills || inText, strong: inSkills };
+      if (skills.has(key)) return { keyword: k, state: "matched" };
+      if (rTokens.has(key) || full.includes(k)) return { keyword: k, state: "partial" };
+      return { keyword: k, state: "missing" };
     });
-    const overused = (() => {
-      const counts = new Map();
-      for (const w of words(resume)) {
-        if (w.length < 4 || STOP.has(w)) continue;
-        counts.set(w, (counts.get(w) ?? 0) + 1);
-      }
-      return [...counts.entries()]
-        .filter(([, c]) => c >= 4)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4)
-        .map(([w, c]) => ({ word: w, count: c }));
-    })();
-    const found = rows.filter((r) => r.found).length;
-    return {
-      rows,
-      overused,
-      match: rows.length === 0 ? 0 : Math.round((found / rows.length) * 100),
-    };
+    const matched = rows.filter((r) => r.state === "matched").length;
+    const partial = rows.filter((r) => r.state === "partial").length;
+    const missing = rows.filter((r) => r.state === "missing").length;
+    const coverage =
+      rows.length === 0 ? 0 : Math.round(((matched + partial * 0.5) / rows.length) * 100);
+    return { rows, matched, partial, missing, coverage };
   }, [jd, resume]);
 
-  const missing = analysis.rows.filter((r) => !r.found);
+  const missingRows = analysis.rows.filter((r) => r.state === "missing");
+
+  const CHIP = {
+    matched: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    partial: "border-amber-200 bg-amber-50 text-amber-700",
+    missing: "border-rose-200 bg-rose-50 text-rose-700",
+  };
 
   return (
     <Card
       icon={<Target className="h-4 w-4" />}
-      title="ATS Keyword Heatmap"
-      subtitle="Paste a job description — see which keywords your resume actually hits"
+      title="ATS Keyword Coverage"
+      subtitle="How well your resume mirrors the language of the role"
     >
-      <textarea
-        value={jd}
-        onChange={(e) => setJd(e.target.value)}
-        rows={4}
-        className="w-full min-h-[92px] max-h-[150px] flex-1 resize-none rounded-xl border border-border/60 bg-surface p-3 text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-      />
-      <div className="mt-3 flex items-center justify-between">
-        <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          Keyword Match
+      <div className="flex flex-wrap items-end gap-6">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Overall coverage
+          </div>
+          <div className="text-[34px] font-bold leading-none tracking-tight">{analysis.coverage}%</div>
         </div>
-        <div className="text-lg font-bold gradient-text">{analysis.match}%</div>
-      </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface">
-        <div
-          className="h-full rounded-full gradient-primary transition-[width] duration-700"
-          style={{ width: `${analysis.match}%` }}
-        />
+        <div className="flex min-w-[160px] flex-1 flex-col gap-2">
+          <div className="h-2 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="h-full rounded-full gradient-primary transition-[width] duration-700 ease-out"
+              style={{ width: `${analysis.coverage}%` }}
+            />
+          </div>
+          <div className="flex flex-wrap gap-3 text-[11.5px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <i className="h-2 w-2 rounded-full bg-emerald-500" /> Matched {analysis.matched}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <i className="h-2 w-2 rounded-full bg-amber-500" /> Partial {analysis.partial}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <i className="h-2 w-2 rounded-full bg-rose-500" /> Missing {analysis.missing}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-1.5">
         {analysis.rows.map((r) => (
           <span
             key={r.keyword}
-            className={
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition " +
-              (r.found
-                ? r.strong
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-emerald-100 bg-emerald-50/60 text-emerald-700"
-                : "border-rose-200 bg-rose-50 text-rose-700")
-            }
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${CHIP[r.state]}`}
           >
-            {r.found ? <Check className="h-3 w-3" /> : <XIcon className="h-3 w-3" />}
+            {r.state === "missing" ? <XIcon className="h-3 w-3" /> : <Check className="h-3 w-3" />}
             {r.keyword}
           </span>
         ))}
       </div>
 
-      {missing.length > 0 && onAddSkill && (
+      {missingRows.length > 0 && onAddSkill && (
         <div className="mt-4 rounded-xl border border-border/60 bg-surface/60 p-3">
           <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Suggested skills to add
+            Top missing skills — one click to add
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {missing.slice(0, 6).map((m) => (
+            {missingRows.slice(0, 6).map((m) => (
               <button
                 key={m.keyword}
                 onClick={() => onAddSkill(m.keyword)}
-                className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-white px-2 py-0.5 text-[11px] font-medium text-primary transition hover:bg-primary hover:text-white"
+                className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-card px-2 py-0.5 text-[11px] font-medium text-primary transition hover:bg-primary hover:text-primary-foreground"
               >
                 <Plus className="h-3 w-3" />
                 {m.keyword}
@@ -238,25 +236,26 @@ export function AtsHeatmap({
         </div>
       )}
 
-      {analysis.overused.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Overused
-          </span>
-          {analysis.overused.map((o) => (
-            <span
-              key={o.word}
-              className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700"
-            >
-              <Flame className="h-3 w-3" />
-              {o.word} · {o.count}×
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="mt-4">
+        <button
+          onClick={() => setEditing((e) => !e)}
+          className="text-[12px] font-semibold text-primary transition hover:opacity-80"
+        >
+          {editing ? "Hide job description" : "Compare against a job description"}
+        </button>
+        {editing && (
+          <textarea
+            value={jd}
+            onChange={(e) => setJd(e.target.value)}
+            rows={4}
+            className="mt-2 max-h-[150px] w-full resize-none rounded-xl border border-border/60 bg-surface p-3 text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        )}
+      </div>
     </Card>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  2. Resume Strength Radar                                           */
