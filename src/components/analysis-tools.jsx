@@ -975,3 +975,36 @@ export function scoreExplanations(resume, score) {
         : "Run an analysis to generate your score.",
   };
 }
+
+/* ------------------------------------------------------------------ */
+/*  Your resume at a glance                                            */
+/* ------------------------------------------------------------------ */
+export function buildGlanceSummary(resume, score) {
+  const recs = buildRecommendations(resume);
+  const ats = typeof score?.ats === "number" ? score.ats : null;
+  const strengths = [];
+  if ((score?.grammar ?? 0) >= 70) strengths.push("clean grammar");
+  if (resume.skills.length >= 8) strengths.push("solid skills coverage");
+  if (resume.experience.length > 0) strengths.push("real work experience");
+  if (resume.projects.length >= 2) strengths.push("a strong project section");
+
+  const topFixes = recs.slice(0, 3).map((r) => r.title.toLowerCase());
+  const gain = recs.slice(0, 3).reduce((n, r) => n + r.ats, 0);
+  const projected = ats === null ? null : Math.min(96, ats + gain + 8);
+
+  const parts = [];
+  parts.push(
+    strengths.length
+      ? `Your resume has ${strengths.slice(0, 2).join(" and ")}`
+      : "Your resume is still early",
+  );
+  parts.push(
+    topFixes.length
+      ? `but is missing several ATS-critical signals. The biggest opportunities are ${topFixes.join(", ")}.`
+      : "and already clears every automated check we run.",
+  );
+  if (projected !== null && topFixes.length) {
+    parts.push(`Completing these could lift your ATS score from ${ats} to roughly ${projected - 4}–${projected}.`);
+  }
+  return { text: parts.join(" "), gain, projected, count: recs.length };
+}
