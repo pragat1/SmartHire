@@ -702,98 +702,126 @@ export function ResumeAnalytics({ resume }) {
 /* ------------------------------------------------------------------ */
 /*  5. Missing Sections                                                */
 /* ------------------------------------------------------------------ */
-export function MissingSectionsCard({ resume }) {
+export function MissingSectionsCard({ resume, onFix }) {
   const items = useMemo(() => {
     const list = [
       {
         label: "Professional Summary",
+        target: "summary",
         ok: resume.summary.trim().length > 40,
-        impact: "+6 ATS",
-        note: "A 1-2 sentence pitch tuned to your target role.",
+        impact: 6,
+        note: "A 1–2 sentence pitch tuned to your target role — the first thing parsers read.",
       },
       {
         label: "LinkedIn URL",
+        target: "personal",
         ok: !!resume.linkedin,
-        impact: "+3 ATS",
-        note: "Recruiters look for this every time.",
+        impact: 3,
+        note: "Recruiters look for this every time before replying.",
       },
       {
         label: "GitHub / Portfolio",
+        target: "personal",
         ok: !!resume.github || !!resume.portfolio,
-        impact: "+5 ATS",
-        note: "Proof of work matters more than words.",
+        impact: 5,
+        note: "Proof of work matters more than adjectives.",
       },
       {
         label: "Projects (2+)",
+        target: "projects",
         ok: resume.projects.length >= 2,
-        impact: "+8 ATS",
-        note: "Two projects with tech + metrics unlocks stronger matches.",
+        impact: 8,
+        note: "Two projects with tech stack + outcome unlock stronger matches.",
       },
       {
         label: "Quantified Achievements",
+        target: "experience",
         ok: /\d+%|\d+x|\d{2,}\+|\$\d+/.test(resumeText(resume)),
-        impact: "+7 ATS",
-        note: "Numbers signal impact. Add %, users, latency, revenue.",
+        impact: 7,
+        note: "Numbers signal impact. Add %, users, latency or revenue.",
       },
       {
         label: "Certifications",
+        target: "certifications",
         ok: resume.certifications.length > 0,
-        impact: "+3 ATS",
+        impact: 3,
         note: "Cloud / framework certs boost keyword density.",
       },
       {
         label: "Internships / Experience",
+        target: "experience",
         ok: resume.experience.length > 0,
-        impact: "+6 ATS",
+        impact: 6,
         note: "Even short roles show real-world context.",
       },
     ];
     return list;
   }, [resume]);
 
-  const missing = items.filter((i) => !i.ok);
+  const missing = items.filter((i) => !i.ok).sort((a, b) => b.impact - a.impact);
   const done = items.filter((i) => i.ok);
+  const potential = missing.reduce((n, m) => n + m.impact, 0);
 
   return (
     <Card
       icon={<AlertTriangle className="h-4 w-4" />}
-      title="Missing Sections & Signals"
-      subtitle={`${missing.length} gaps · ${done.length} looking good`}
+      title="What to fix first"
+      subtitle={
+        missing.length === 0
+          ? "Every core section is complete"
+          : `${missing.length} gaps worth up to +${potential} ATS points`
+      }
     >
-      <ul className="flex max-h-[430px] flex-col gap-1.5 overflow-y-auto pr-0.5">
-        {missing.map((m) => (
-          <li
-            key={m.label}
-            className="flex items-start gap-2.5 rounded-xl border border-rose-100 bg-rose-50/50 px-2.5 py-1.5"
-          >
-            <div className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-rose-100 text-rose-600">
-              <XIcon className="h-3 w-3" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-foreground">{m.label}</span>
-                <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold text-rose-600">
-                  {m.impact}
+      {missing.length === 0 ? (
+        <div className="grid flex-1 place-items-center rounded-2xl border border-dashed border-border bg-surface/60 p-8 text-center">
+          <div className="max-w-[260px]">
+            <Check className="mx-auto h-6 w-6 text-emerald-600" />
+            <div className="mt-3 text-sm font-semibold">All core sections complete</div>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Keep refining wording and metrics to push your score higher.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {missing.map((m) => (
+            <li
+              key={m.label}
+              className="group flex flex-col gap-2 rounded-xl border border-border/70 bg-surface/50 p-3 transition duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[13.5px] font-semibold leading-snug">{m.label}</span>
+                <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                  +{m.impact} ATS
                 </span>
               </div>
-              <div className="text-[11px] text-muted-foreground">{m.note}</div>
-            </div>
-          </li>
-        ))}
-        {done.slice(0, 3).map((d) => (
-          <li
-            key={d.label}
-            className="flex items-start gap-2.5 rounded-xl border border-transparent px-3 py-1.5 text-sm text-muted-foreground"
-          >
-            <div className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-600">
-              <Check className="h-3 w-3" />
-            </div>
-            <span className="line-through">{d.label}</span>
-          </li>
-        ))}
-      </ul>
+              <p className="text-[11.5px] leading-relaxed text-muted-foreground">{m.note}</p>
+              <button
+                onClick={() => onFix?.(m)}
+                className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-primary/30 bg-card px-2.5 py-1 text-[12px] font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground"
+              >
+                Fix <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {done.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {done.map((d) => (
+            <span
+              key={d.label}
+              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
+            >
+              <Check className="h-3 w-3" /> {d.label}
+            </span>
+          ))}
+        </div>
+      )}
     </Card>
   );
+
 }
 
 /* ------------------------------------------------------------------ */
