@@ -765,7 +765,7 @@ export function MissingSectionsCard({ resume, onFix }) {
   return (
     <Card
       icon={<AlertTriangle className="h-4 w-4" />}
-      title="What to fix first"
+      title="Section checklist"
       subtitle={
         missing.length === 0
           ? "Every core section is complete"
