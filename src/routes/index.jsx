@@ -42,15 +42,25 @@ import { ResumeAnalysisPage } from "@/components/analysis-page";
 import {
   ResumeVersionsCard,
   useResumeVersions,
-  CareerGapDetector,
   InterviewCoach,
   HistoryTimeline,
 } from "@/components/workspace-tools";
 import { AppSidebar, TopBar } from "@/components/dashboard-shell";
 import { DashboardHome } from "@/components/dashboard-home";
 import { LandingPage } from "@/components/landing/landing-page";
+import { CareerWorkspace } from "@/components/career-workspace";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "SmartHire AI — Build an ATS-ready resume" },
+      { name: "description", content: "Build, analyze, and improve your resume with SmartHire AI's conversational coach and career workspace." },
+      { property: "og:title", content: "SmartHire AI — Build an ATS-ready resume" },
+      { property: "og:description", content: "Build, analyze, and improve your resume with a conversational AI coach." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: SmartHireApp,
 });
 
@@ -396,6 +406,7 @@ function SmartHireApp() {
   const nextSection = JOURNEY.find((s) => !completedSections.includes(s.key)) ?? null;
   const isDashboard = view === "dashboard";
   const isAnalysis = view === "analysis";
+  const isWorkspace = view === "workspace";
 
   const handleNavigate = (key) => {
     setView(key);
@@ -437,12 +448,14 @@ function SmartHireApp() {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar
-            title={isDashboard ? "Dashboard" : isAnalysis ? "Resume Analysis" : "Resume Builder"}
+            title={isDashboard ? "Dashboard" : isAnalysis ? "Resume Analysis" : isWorkspace ? "Career Workspace" : "Resume Builder"}
             subtitle={
               isDashboard
                 ? "Your resume health at a glance"
                 : isAnalysis
                   ? "Detailed insights and AI-powered feedback"
+                  : isWorkspace
+                    ? "Your goals, progress, and next best career moves"
                   : "Chat with Aria — your resume updates live"
             }
             query={search}
@@ -479,7 +492,16 @@ function SmartHireApp() {
               onRestoreVersion={restoreVersion}
 
             />
-          ) : (
+           ) : isWorkspace ? (
+             <CareerWorkspace
+               resume={resume}
+               score={score}
+               history={history}
+               onNavigate={handleNavigate}
+               onAddSkill={addSkill}
+               onPushHistory={pushHistory}
+             />
+           ) : (
             <main className="flex min-w-0 flex-1 flex-col gap-4 p-4 lg:flex-row lg:gap-5 lg:p-6">
               <div id="chat-panel" className="flex min-w-0 flex-1 lg:max-w-[540px] xl:max-w-[620px]">
                 <ChatPanel

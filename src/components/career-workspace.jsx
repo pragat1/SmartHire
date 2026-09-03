@@ -309,14 +309,14 @@ function Onboarding({ resume, onNewRole, onNavigate }) {
   );
 }
 
-function CareerOverview({ resume, score, roles, primaryRole, gap, onNewRole }) {
+function CareerOverview({ resume, roles, primaryRole, gap, onNewRole }) {
   const daysToGoal = primaryRole?.goalDate ? Math.max(0, Math.ceil((new Date(primaryRole.goalDate).getTime() - Date.now()) / 86400000)) : null;
   const profileStatus = resume.name || resume.role || resume.skills.length ? "In progress" : "Not started";
   const stats = [
     { icon: Target, value: roles.length || "—", label: "Target roles", sub: roles.length ? "Active" : "Add a target role", tone: "bg-primary/10 text-primary" },
     { icon: Compass, value: typeof gap?.readiness === "number" ? `${gap.readiness}%` : "—", label: "Overall match", sub: gap ? "Based on your profile" : "Not assessed", tone: "bg-success/10 text-success" },
     { icon: Layers3, value: gap?.missing_skills?.length ?? "—", label: "Skills to improve", sub: gap ? "From gap analysis" : "Run a gap analysis", tone: "bg-warning/10 text-warning-foreground" },
-    { icon: Clock3, value: daysToGoal === null ? "—" : daysToGoal, label: "Days to goal", sub: daysToGoal === null ? "Set a career goal" : "Until target date", tone: "bg-sky-500/10 text-sky-600" },
+    { icon: Clock3, value: daysToGoal === null ? "—" : daysToGoal, label: "Days to goal", sub: daysToGoal === null ? "Set a career goal" : "Until target date", tone: "bg-accent text-accent-foreground" },
   ];
   return (
     <WorkspaceCard>
@@ -364,13 +364,13 @@ function GapSummaryCard({ resume, primaryRole, gap, loading, error, onRun, onVie
   </WorkspaceCard>;
 }
 
-function GapDetails({ gap, role, onAddSkill }) {
+function GapDetails({ gap, role, onAddSkill, onClose }) {
   const sections = [
     { title: "Strong matches", icon: Check, tone: "text-success", items: gap?.matched_skills || [], empty: "No strong matches identified yet." },
     { title: "Missing skills", icon: TriangleAlert, tone: "text-destructive", items: gap?.missing_skills?.map((item) => `${item.skill} — ${item.why}`) || [], empty: "No missing skills were returned." },
     { title: "Resume evidence gaps", icon: FileText, tone: "text-warning-foreground", items: gap?.hidden_gaps || [], empty: "No additional evidence gaps were returned." },
   ];
-  return <Modal title={`Gap analysis · ${role}`} subtitle="Known profile signals are separated from recommended next steps." onClose={onAddSkill ? undefined : undefined} wide>
+  return <Modal title={`Gap analysis · ${role}`} subtitle="Known profile signals are separated from recommended next steps." onClose={onClose} wide>
     <div className="rounded-xl border border-primary/15 bg-primary/5 p-4"><div className="flex items-center gap-3"><ScoreRing size={78} value={gap?.readiness} /><p className="text-[13px] leading-relaxed text-muted-foreground">{gap?.verdict || "No analysis available yet."}</p></div></div>
     <div className="mt-4 grid gap-3 md:grid-cols-3">{sections.map((section) => <div key={section.title} className="rounded-xl border border-border bg-surface/45 p-3"><div className={`flex items-center gap-2 text-[12px] font-bold ${section.tone}`}><section.icon className="h-3.5 w-3.5" />{section.title}</div>{section.items.length ? <ul className="mt-3 space-y-2">{section.items.map((item) => <li key={item} className="text-[11px] leading-relaxed text-foreground/80">{item}</li>)}</ul> : <p className="mt-3 text-[11px] text-muted-foreground">{section.empty}</p>}</div>)}</div>
     {gap?.missing_skills?.length > 0 && <div className="mt-4 rounded-xl border border-border p-3"><div className="text-[11px] font-semibold">Add a known skill to your profile</div><div className="mt-2 flex flex-wrap gap-1.5">{gap.missing_skills.map((item) => <Button key={item.skill} onClick={() => onAddSkill(item.skill)}><Plus className="h-3 w-3" /> {item.skill}</Button>)}</div><p className="mt-2 text-[10px] text-muted-foreground">Only add skills you actually have or plan to learn; recommendations are not treated as experience.</p></div>}
@@ -508,7 +508,7 @@ export function CareerWorkspace({ resume, score, history, onNavigate, onAddSkill
   return <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 xl:p-8"><div className="mx-auto max-w-[1480px] space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Career Workspace</h1><span className="hidden rounded-full bg-primary/10 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-primary sm:inline-flex">Career command center</span></div><p className="mt-1.5 text-sm text-muted-foreground">Plan your career, track progress, and achieve your professional goals.</p></div><div className="flex items-center gap-2"><Button onClick={() => setRoleModal({})}><Plus className="h-3.5 w-3.5" /> New target role</Button><button type="button" className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground" aria-label="How Career Workspace works" title="How it works"><CircleHelp className="h-4 w-4" /></button></div></header>
     {!hasSetup ? <Onboarding resume={resume} onNewRole={() => setRoleModal({})} onNavigate={onNavigate} /> : <>
-      <CareerOverview resume={resume} score={score} roles={workspace.roles} primaryRole={primaryRole} gap={gap} onNewRole={() => setRoleModal({})} />
+      <CareerOverview resume={resume} roles={workspace.roles} primaryRole={primaryRole} gap={gap} onNewRole={() => setRoleModal({})} />
       <div className="grid items-start gap-5 xl:grid-cols-2"><GapSummaryCard resume={resume} primaryRole={primaryRole} gap={gap} loading={gapLoading} error={gapError} onRun={runGap} onViewDetails={() => setGapDetailsOpen(true)} onAddSkill={onAddSkill} /><TargetRoleProgress roles={workspace.roles} primaryId={primaryRole?.id} onSelect={selectRole} onEdit={(role) => setRoleModal(role)} onDelete={deleteRole} onNewRole={() => setRoleModal({})} /></div>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]"><RoadmapCard milestones={milestones} completedMilestones={workspace.completedMilestones} onToggle={toggleMilestone} onOpenInterview={() => setInterviewOpen(true)} /><ResourcesCard /></div>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]"><JobMatchCard resume={resume} /><ActivityCard history={history} activity={workspace.activity} /></div>
@@ -516,6 +516,6 @@ export function CareerWorkspace({ resume, score, history, onNavigate, onAddSkill
       <WorkspaceCard className="bg-gradient-soft"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-start gap-3"><Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" /><div><div className="text-[13px] font-bold">Pro tip</div><p className="mt-1 text-[12px] text-muted-foreground">{!resume.name ? "Add your name and resume details to unlock more personalized insights." : !resume.skills.length ? "Add your current skills to improve your gap analysis." : !gap ? "Run a gap analysis to make your next career action specific." : "Use the next roadmap milestone to turn your profile gaps into evidence."}</p></div></div><Button variant="ghost" onClick={() => !resume.name || !resume.skills.length ? onNavigate("builder") : runGap()}>{!gap ? "Take next step" : "Refresh insights"} <ArrowRight className="h-3.5 w-3.5" /></Button></div></WorkspaceCard>
     </>}
     {roleModal && <TargetRoleModal initialRole={roleModal.id ? roleModal : null} onClose={() => setRoleModal(null)} onSave={saveRole} />}
-    {gapDetailsOpen && gap && <GapDetails gap={gap} role={primaryRole?.role || "target role"} onAddSkill={onAddSkill} />}
+    {gapDetailsOpen && gap && <GapDetails gap={gap} role={primaryRole?.role || "target role"} onAddSkill={onAddSkill} onClose={() => setGapDetailsOpen(false)} />}
   </div></main>;
 }
