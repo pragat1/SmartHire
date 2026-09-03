@@ -364,13 +364,13 @@ function GapSummaryCard({ resume, primaryRole, gap, loading, error, onRun, onVie
   </WorkspaceCard>;
 }
 
-function GapDetails({ gap, role, onAddSkill }) {
+function GapDetails({ gap, role, onAddSkill, onClose }) {
   const sections = [
     { title: "Strong matches", icon: Check, tone: "text-success", items: gap?.matched_skills || [], empty: "No strong matches identified yet." },
     { title: "Missing skills", icon: TriangleAlert, tone: "text-destructive", items: gap?.missing_skills?.map((item) => `${item.skill} — ${item.why}`) || [], empty: "No missing skills were returned." },
     { title: "Resume evidence gaps", icon: FileText, tone: "text-warning-foreground", items: gap?.hidden_gaps || [], empty: "No additional evidence gaps were returned." },
   ];
-  return <Modal title={`Gap analysis · ${role}`} subtitle="Known profile signals are separated from recommended next steps." onClose={onAddSkill ? undefined : undefined} wide>
+  return <Modal title={`Gap analysis · ${role}`} subtitle="Known profile signals are separated from recommended next steps." onClose={onClose} wide>
     <div className="rounded-xl border border-primary/15 bg-primary/5 p-4"><div className="flex items-center gap-3"><ScoreRing size={78} value={gap?.readiness} /><p className="text-[13px] leading-relaxed text-muted-foreground">{gap?.verdict || "No analysis available yet."}</p></div></div>
     <div className="mt-4 grid gap-3 md:grid-cols-3">{sections.map((section) => <div key={section.title} className="rounded-xl border border-border bg-surface/45 p-3"><div className={`flex items-center gap-2 text-[12px] font-bold ${section.tone}`}><section.icon className="h-3.5 w-3.5" />{section.title}</div>{section.items.length ? <ul className="mt-3 space-y-2">{section.items.map((item) => <li key={item} className="text-[11px] leading-relaxed text-foreground/80">{item}</li>)}</ul> : <p className="mt-3 text-[11px] text-muted-foreground">{section.empty}</p>}</div>)}</div>
     {gap?.missing_skills?.length > 0 && <div className="mt-4 rounded-xl border border-border p-3"><div className="text-[11px] font-semibold">Add a known skill to your profile</div><div className="mt-2 flex flex-wrap gap-1.5">{gap.missing_skills.map((item) => <Button key={item.skill} onClick={() => onAddSkill(item.skill)}><Plus className="h-3 w-3" /> {item.skill}</Button>)}</div><p className="mt-2 text-[10px] text-muted-foreground">Only add skills you actually have or plan to learn; recommendations are not treated as experience.</p></div>}
@@ -516,6 +516,6 @@ export function CareerWorkspace({ resume, score, history, onNavigate, onAddSkill
       <WorkspaceCard className="bg-gradient-soft"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-start gap-3"><Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" /><div><div className="text-[13px] font-bold">Pro tip</div><p className="mt-1 text-[12px] text-muted-foreground">{!resume.name ? "Add your name and resume details to unlock more personalized insights." : !resume.skills.length ? "Add your current skills to improve your gap analysis." : !gap ? "Run a gap analysis to make your next career action specific." : "Use the next roadmap milestone to turn your profile gaps into evidence."}</p></div></div><Button variant="ghost" onClick={() => !resume.name || !resume.skills.length ? onNavigate("builder") : runGap()}>{!gap ? "Take next step" : "Refresh insights"} <ArrowRight className="h-3.5 w-3.5" /></Button></div></WorkspaceCard>
     </>}
     {roleModal && <TargetRoleModal initialRole={roleModal.id ? roleModal : null} onClose={() => setRoleModal(null)} onSave={saveRole} />}
-    {gapDetailsOpen && gap && <GapDetails gap={gap} role={primaryRole?.role || "target role"} onAddSkill={onAddSkill} />}
+    {gapDetailsOpen && gap && <GapDetails gap={gap} role={primaryRole?.role || "target role"} onAddSkill={onAddSkill} onClose={() => setGapDetailsOpen(false)} />}
   </div></main>;
 }

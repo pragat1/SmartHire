@@ -168,6 +168,24 @@ export function ResumeVersionsCard({
   );
 }
 
+export async function analyzeCareerGap({ skills, existingProjects, targetRole, resumeSummary }) {
+  const res = await fetch("/api/generate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      action: "career-gap",
+      skills,
+      existingProjects,
+      targetRole,
+      resumeSummary,
+    }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const json = await res.json();
+  if (!json?.roadmap) throw new Error("Malformed response");
+  return json;
+}
+
 /* ============================================================
  *  Career Gap Detector  (Signature AI feature)
  *  ============================================================ */
@@ -188,20 +206,12 @@ export function CareerGapDetector({
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          action: "career-gap",
-          skills: resume.skills,
-          existingProjects: resume.projects.map((p) => p.name),
-          targetRole: target,
-          resumeSummary: resume.summary,
-        }),
+      const json = await analyzeCareerGap({
+        skills: resume.skills,
+        existingProjects: resume.projects.map((p) => p.name),
+        targetRole: target,
+        resumeSummary: resume.summary,
       });
-      if (!res.ok) throw new Error(await res.text());
-      const json = await res.json();
-      if (!json?.roadmap) throw new Error("Malformed response");
       setData(json);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to analyze");
