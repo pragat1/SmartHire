@@ -309,7 +309,7 @@ function Onboarding({ resume, onNewRole, onNavigate }) {
   );
 }
 
-function CareerOverview({ resume, score, roles, primaryRole, gap, onNewRole }) {
+function CareerOverview({ resume, roles, primaryRole, gap, onNewRole }) {
   const daysToGoal = primaryRole?.goalDate ? Math.max(0, Math.ceil((new Date(primaryRole.goalDate).getTime() - Date.now()) / 86400000)) : null;
   const profileStatus = resume.name || resume.role || resume.skills.length ? "In progress" : "Not started";
   const stats = [
@@ -508,7 +508,7 @@ export function CareerWorkspace({ resume, score, history, onNavigate, onAddSkill
   return <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 xl:p-8"><div className="mx-auto max-w-[1480px] space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Career Workspace</h1><span className="hidden rounded-full bg-primary/10 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-primary sm:inline-flex">Career command center</span></div><p className="mt-1.5 text-sm text-muted-foreground">Plan your career, track progress, and achieve your professional goals.</p></div><div className="flex items-center gap-2"><Button onClick={() => setRoleModal({})}><Plus className="h-3.5 w-3.5" /> New target role</Button><button type="button" className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground" aria-label="How Career Workspace works" title="How it works"><CircleHelp className="h-4 w-4" /></button></div></header>
     {!hasSetup ? <Onboarding resume={resume} onNewRole={() => setRoleModal({})} onNavigate={onNavigate} /> : <>
-      <CareerOverview resume={resume} score={score} roles={workspace.roles} primaryRole={primaryRole} gap={gap} onNewRole={() => setRoleModal({})} />
+      <CareerOverview resume={resume} roles={workspace.roles} primaryRole={primaryRole} gap={gap} onNewRole={() => setRoleModal({})} />
       <div className="grid items-start gap-5 xl:grid-cols-2"><GapSummaryCard resume={resume} primaryRole={primaryRole} gap={gap} loading={gapLoading} error={gapError} onRun={runGap} onViewDetails={() => setGapDetailsOpen(true)} onAddSkill={onAddSkill} /><TargetRoleProgress roles={workspace.roles} primaryId={primaryRole?.id} onSelect={selectRole} onEdit={(role) => setRoleModal(role)} onDelete={deleteRole} onNewRole={() => setRoleModal({})} /></div>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]"><RoadmapCard milestones={milestones} completedMilestones={workspace.completedMilestones} onToggle={toggleMilestone} onOpenInterview={() => setInterviewOpen(true)} /><ResourcesCard /></div>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]"><JobMatchCard resume={resume} /><ActivityCard history={history} activity={workspace.activity} /></div>
