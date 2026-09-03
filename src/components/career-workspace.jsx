@@ -316,7 +316,7 @@ function CareerOverview({ resume, score, roles, primaryRole, gap, onNewRole }) {
     { icon: Target, value: roles.length || "—", label: "Target roles", sub: roles.length ? "Active" : "Add a target role", tone: "bg-primary/10 text-primary" },
     { icon: Compass, value: typeof gap?.readiness === "number" ? `${gap.readiness}%` : "—", label: "Overall match", sub: gap ? "Based on your profile" : "Not assessed", tone: "bg-success/10 text-success" },
     { icon: Layers3, value: gap?.missing_skills?.length ?? "—", label: "Skills to improve", sub: gap ? "From gap analysis" : "Run a gap analysis", tone: "bg-warning/10 text-warning-foreground" },
-    { icon: Clock3, value: daysToGoal === null ? "—" : daysToGoal, label: "Days to goal", sub: daysToGoal === null ? "Set a career goal" : "Until target date", tone: "bg-sky-500/10 text-sky-600" },
+    { icon: Clock3, value: daysToGoal === null ? "—" : daysToGoal, label: "Days to goal", sub: daysToGoal === null ? "Set a career goal" : "Until target date", tone: "bg-accent text-accent-foreground" },
   ];
   return (
     <WorkspaceCard>

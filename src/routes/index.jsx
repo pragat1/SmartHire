@@ -51,6 +51,16 @@ import { LandingPage } from "@/components/landing/landing-page";
 import { CareerWorkspace } from "@/components/career-workspace";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "SmartHire AI — Build an ATS-ready resume" },
+      { name: "description", content: "Build, analyze, and improve your resume with SmartHire AI's conversational coach and career workspace." },
+      { property: "og:title", content: "SmartHire AI — Build an ATS-ready resume" },
+      { property: "og:description", content: "Build, analyze, and improve your resume with a conversational AI coach." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: SmartHireApp,
 });
 
