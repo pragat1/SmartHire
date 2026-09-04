@@ -97,7 +97,7 @@ function CardHeading({ icon: Icon, title, subtitle, action }) {
   );
 }
 
-function Button({ children, variant = "secondary", className = "", ...props }) {
+function Button({ children, variant = "secondary", className = "", type = "button", ...props }) {
   const styles = {
     primary: "gradient-primary text-primary-foreground shadow-elegant hover:opacity-95",
     secondary: "border border-border bg-card text-foreground hover:bg-surface-2",
@@ -106,7 +106,7 @@ function Button({ children, variant = "secondary", className = "", ...props }) {
   };
   return (
     <button
-      type="button"
+      type={type}
       {...props}
       className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-[12px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]} ${className}`}
     >
@@ -263,7 +263,7 @@ function TargetRoleModal({ initialRole, onClose, onSave }) {
         </label>
         <div className="flex justify-end gap-2 border-t border-border pt-4">
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" disabled={!canSave}><Check className="h-3.5 w-3.5" /> {initialRole ? "Save changes" : "Add role"}</Button>
+          <Button type="submit" variant="primary" disabled={!canSave}><Check className="h-3.5 w-3.5" /> {initialRole ? "Save changes" : "Add role"}</Button>
         </div>
       </form>
     </Modal>
