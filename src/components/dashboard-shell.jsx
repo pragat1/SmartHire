@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   MessagesSquare,
   ScanSearch,
+  FileSearch,
   Briefcase,
   Settings,
   Search,
@@ -16,6 +17,7 @@ import {
 export const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { key: "builder", label: "Resume Builder", icon: MessagesSquare },
+  { key: "analyzer", label: "Resume Analyzer", icon: FileSearch },
   { key: "analysis", label: "ATS Analysis", icon: ScanSearch },
   { key: "workspace", label: "Career Workspace", icon: Briefcase },
 ];
