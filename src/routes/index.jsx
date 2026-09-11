@@ -125,13 +125,13 @@ function SmartHireApp() {
   const [template, setTemplate] = useState("Minimal");
   const [history, setHistory] = useState([]);
   const versions = useResumeVersions();
-  const [view, setView] = useState("landing");
+  const [view, setView] = useState(() => requestedView ?? "landing");
   const [search, setSearch] = useState("");
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
-    if (requestedView === "builder" || requestedView === "dashboard") setView(requestedView);
+    if (["builder", "dashboard", "analysis", "workspace"].includes(requestedView)) setView(requestedView);
   }, [requestedView]);
 
   const pushHistory = useCallback((text) => {

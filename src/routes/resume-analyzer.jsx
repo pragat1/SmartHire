@@ -25,7 +25,7 @@ function ResumeAnalyzerRoute() {
       void navigate({ to: "/", search: { view: "dashboard" } });
       return;
     }
-    void navigate({ to: "/", search: { view: key === "builder" ? "builder" : "dashboard" } });
+    void navigate({ to: "/", search: { view: ["builder", "analysis", "workspace"].includes(key) ? key : "dashboard" } });
   }
 
   return (
