@@ -126,6 +126,10 @@ function SmartHireApp() {
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
+  useEffect(() => {
+    if (window.location.search.includes("view=builder")) setView("builder");
+  }, []);
+
   const pushHistory = useCallback((text) => {
     setHistory((h) => [...h, { id: uid(), at: Date.now(), text }].slice(-80));
   }, []);

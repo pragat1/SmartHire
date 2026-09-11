@@ -34,7 +34,7 @@ function ResumeAnalyzerRoute() {
         <AppSidebar active="analyzer" onNavigate={handleNavigate} journey={null} completed={[]} progress={0} onJump={() => {}} name="" />
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar title="Resume Analyzer" subtitle="Upload, understand, and improve your resume" notifications={0} name="" />
-          <ResumeAnalyzer onImprove={() => void navigate({ to: "/" })} />
+          <ResumeAnalyzer onImprove={() => { window.location.href = "/?view=builder"; }} />
         </div>
       </div>
     </div>
