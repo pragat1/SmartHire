@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FileText,
@@ -104,6 +104,7 @@ const OPENER = {
 
 // ---------- Main app ----------
 function SmartHireApp() {
+  const navigate = useNavigate();
   const [resume, setResume] = useState(initialResume);
   const [messages, setMessages] = useState([OPENER]);
   const [input, setInput] = useState("");
@@ -409,6 +410,10 @@ function SmartHireApp() {
   const isWorkspace = view === "workspace";
 
   const handleNavigate = (key) => {
+    if (key === "analyzer") {
+      void navigate({ to: "/resume-analyzer" });
+      return;
+    }
     setView(key);
     if (key !== "dashboard") {
       window.setTimeout(() => {
