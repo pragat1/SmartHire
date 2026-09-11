@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FileText,
@@ -51,6 +51,9 @@ import { LandingPage } from "@/components/landing/landing-page";
 import { CareerWorkspace } from "@/components/career-workspace";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search) => ({
+    view: typeof search.view === "string" ? search.view : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "SmartHire AI — Build an ATS-ready resume" },
@@ -104,6 +107,8 @@ const OPENER = {
 
 // ---------- Main app ----------
 function SmartHireApp() {
+  const navigate = useNavigate();
+  const { view: requestedView } = useSearch({ from: "/" });
   const [resume, setResume] = useState(initialResume);
   const [messages, setMessages] = useState([OPENER]);
   const [input, setInput] = useState("");
@@ -120,10 +125,14 @@ function SmartHireApp() {
   const [template, setTemplate] = useState("Minimal");
   const [history, setHistory] = useState([]);
   const versions = useResumeVersions();
-  const [view, setView] = useState("landing");
+  const [view, setView] = useState(() => requestedView ?? "landing");
   const [search, setSearch] = useState("");
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (["builder", "dashboard", "analysis", "workspace"].includes(requestedView)) setView(requestedView);
+  }, [requestedView]);
 
   const pushHistory = useCallback((text) => {
     setHistory((h) => [...h, { id: uid(), at: Date.now(), text }].slice(-80));
@@ -409,6 +418,10 @@ function SmartHireApp() {
   const isWorkspace = view === "workspace";
 
   const handleNavigate = (key) => {
+    if (key === "analyzer") {
+      void navigate({ to: "/resume-analyzer" });
+      return;
+    }
     setView(key);
     if (key !== "dashboard") {
       window.setTimeout(() => {
