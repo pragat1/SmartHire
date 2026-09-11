@@ -22,10 +22,10 @@ function ResumeAnalyzerRoute() {
   function handleNavigate(key) {
     if (key === "analyzer") return;
     if (key === "dashboard") {
-      void navigate({ to: "/" });
+      void navigate({ to: "/", search: { view: "dashboard" } });
       return;
     }
-    void navigate({ to: "/" });
+    void navigate({ to: "/", search: { view: key === "builder" ? "builder" : "dashboard" } });
   }
 
   return (
@@ -34,7 +34,7 @@ function ResumeAnalyzerRoute() {
         <AppSidebar active="analyzer" onNavigate={handleNavigate} journey={null} completed={[]} progress={0} onJump={() => {}} name="" />
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar title="Resume Analyzer" subtitle="Upload, understand, and improve your resume" notifications={0} name="" />
-          <ResumeAnalyzer onImprove={() => { window.location.href = "/?view=builder"; }} />
+          <ResumeAnalyzer onImprove={() => void navigate({ to: "/", search: { view: "builder" } })} />
         </div>
       </div>
     </div>
