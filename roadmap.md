@@ -1,0 +1,5 @@
+- [x] Inspect existing routing, shell, resume state, upload/parser availability, AI endpoints, and design system
+- [x] Build the separate Resume Analyzer route and responsive empty/results UI
+- [x] Add validated upload handling, optional job description, loading/error states, re-analysis, report download, and builder handoff
+- [x] Add real server-side AI analysis endpoint and navigation entry without changing ATS Analysis
+- [x] Verify build, desktop/mobile UI, validation, live TXT analysis, and console diagnostics
