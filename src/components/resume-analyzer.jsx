@@ -237,7 +237,7 @@ export function ResumeAnalyzer({ onImprove }) {
       const { text: resumeText, pageCount } = await extractResume(file);
       if (resumeText.trim().length < 80) throw new Error("We couldn't extract enough readable text. This may be a scanned image; try a text-based PDF or DOCX file.");
       setPhase("analyzing");
-      const response = await fetch("/api/analyze-resume", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: file.name, resumeText, pageCount, jobDescription: jobDescription.trim() || null }) });
+      const response = await fetch("/api/analyze-resume", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: file.name, resumeText: resumeText.slice(0, 45000), pageCount, jobDescription: jobDescription.trim() || null }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message || "Resume analysis couldn't be completed. Please try again.");
       setAnalysis(payload.analysis); setAnalyzedSignature(fileSignature); setPhase("done");
