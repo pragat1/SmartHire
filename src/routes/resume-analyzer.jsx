@@ -33,7 +33,7 @@ function ResumeAnalyzerRoute() {
       <div className="mx-auto flex min-h-screen max-w-[1700px]">
         <AppSidebar active="analyzer" onNavigate={handleNavigate} journey={null} completed={[]} progress={0} onJump={() => {}} name="" />
         <div className="flex min-w-0 flex-1 flex-col">
-          <TopBar title="Resume Analyzer" subtitle="Upload, understand, and improve your resume" notifications={0} name="" />
+          <TopBar title="Resume Analyzer" subtitle="Upload, understand, and improve your resume with AI-powered insights." notifications={0} name="" />
           <ResumeAnalyzer onImprove={() => void navigate({ to: "/", search: { view: "builder" } })} />
         </div>
       </div>
