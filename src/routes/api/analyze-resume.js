@@ -60,7 +60,8 @@ function deriveAnalytics(text, pageCount) {
   const words = text.match(/[\p{L}\p{N}][\p{L}\p{N}+#.\-/]*/gu) ?? [];
   const normalizedWords = words.map((word) => word.toLowerCase().replace(/[^\p{L}\p{N}]/gu, ""));
   const sentences = text.split(/[.!?]+/).filter((sentence) => sentence.trim().length > 0).length;
-  const foundSkills = [...skillTerms].filter((term) => new RegExp(`(^|[^\\w+#])${term.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}(?=$|[^\\w+#])`, "i").test(text));
+  const normalizedText = ` ${text.toLowerCase().replace(/[^a-z0-9+#]+/g, " ").trim()} `;
+  const foundSkills = [...skillTerms].filter((term) => normalizedText.includes(` ${term.toLowerCase().replace(/[^a-z0-9+#]+/g, " ").trim()} `));
   const actionVerbCount = normalizedWords.filter((word) => actionVerbs.has(word)).length;
   const buzzwordCount = [...buzzwords].filter((word) => text.toLowerCase().includes(word)).length;
   const passiveSignals = (text.match(/\b(?:was|were|is|are|been|being)\s+(?:\w+ed|\w+en)\b/gi) ?? []).length;
