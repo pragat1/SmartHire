@@ -1,6 +1,9 @@
 - [x] Inspect existing routing, shell, resume state, upload/parser availability, AI endpoints, and design system
 - [x] Preserve the dedicated route, shared application shell, and existing navigation
 - [x] Extract TXT, DOCX, and PDF text in the browser; compute deterministic text analytics
+- [ ] Add an editable extracted-text review step before analysis
+- [ ] OCR scanned PDF pages in the browser and include OCR text and page counts in analysis
+- [ ] Re-analyze and calculate document metrics from the user's corrected text
 - [x] Restructure the analyzer into compact upload, in-progress, error, and results states
 - [x] Keep AI-derived scores and recommendations evidence-based; support job-specific re-analysis and complete report export
 - [ ] Verify a successful live analysis (blocked by insufficient workspace AI credits); verify preview build and local responsive/error states
