@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep resume OCR assets locally served and load the OCR engine only from browser interactions so resume page images and text are not sent to third-party OCR hosts.
