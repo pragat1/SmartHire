@@ -72,12 +72,43 @@ async function extractResume(file) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
   const document = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
   const pages = [];
-  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-    const page = await document.getPage(pageNumber);
-    const content = await page.getTextContent();
-    pages.push(content.items.map((item) => "str" in item ? item.str : "").join(" "));
+  let ocrWorker = null;
+  let usedOcr = false;
+  try {
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      const page = await document.getPage(pageNumber);
+      const content = await page.getTextContent();
+      let pageText = content.items.map((item) => "str" in item ? item.str : "").join(" ").trim();
+      const wordCount = pageText.match(/[\p{L}\p{N}]+/gu)?.length ?? 0;
+      if (pageText.length < 60 || wordCount < 10) {
+        usedOcr = true;
+        if (!ocrWorker) {
+          const { createWorker } = await import("tesseract.js");
+          ocrWorker = await createWorker("eng", 1, {
+            workerPath: "/vendor/tesseract/worker.min.js",
+            corePath: "/vendor/tesseract/core",
+            langPath: "/vendor/tesseract/lang",
+            gzip: true,
+          });
+        }
+        const viewport = page.getViewport({ scale: 1.8 });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const context = canvas.getContext("2d", { alpha: false });
+        if (!context) throw new Error("This browser couldn't prepare a PDF page for text recognition.");
+        await page.render({ canvas, canvasContext: context, viewport }).promise;
+        const recognized = await ocrWorker.recognize(canvas);
+        pageText = recognized.data.text.trim() || pageText;
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+      pages.push(pageText);
+    }
+  } finally {
+    if (ocrWorker) await ocrWorker.terminate();
   }
-  return { text: pages.join("\n"), pageCount: document.numPages };
+  return { text: pages.join("\n"), pageCount: document.numPages, usedOcr };
 }
 
 function band(score) {
@@ -160,10 +191,10 @@ function HowItWorks({ open, onClose }) {
   );
 }
 
-function LoadingState({ phase }) {
+function LoadingState({ phase, progressText }) {
   const steps = ["Reading resume content", "Extracting sections", "Evaluating ATS compatibility", "Checking skills and keywords", "Reviewing achievements and metrics", "Generating recommendations"];
   const currentIndex = phase === "reading" ? 1 : 2;
-  return <Panel className="mx-auto w-full max-w-2xl"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"><Loader2 className="h-5 w-5 animate-spin" /></div><div><h2 className="font-bold">Analyzing your resume</h2><p className="text-[12px] text-muted-foreground">This usually takes a few seconds while we review your document.</p></div></div><ol className="mt-5 grid gap-2 sm:grid-cols-2">{steps.map((label, index) => { const done = index < currentIndex; const current = index === currentIndex; return <li key={label} className="flex items-center gap-2.5 text-[12px]"><span className={`grid h-6 w-6 place-items-center rounded-full ${done ? "bg-success text-success-foreground" : current ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{done ? <Check className="h-3.5 w-3.5" /> : current ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}</span><span className={current ? "font-semibold" : done ? "text-foreground" : "text-muted-foreground"}>{label}</span></li>; })}</ol></Panel>;
+  return <Panel className="mx-auto w-full max-w-2xl"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"><Loader2 className="h-5 w-5 animate-spin" /></div><div><h2 className="font-bold">{phase === "reading" ? "Preparing your editable text preview" : "Analyzing your resume"}</h2><p className="text-[12px] text-muted-foreground">{progressText || (phase === "reading" ? "Reading your document and recognizing scanned pages when needed." : "This usually takes a few seconds while we review your document.")}</p></div></div>{phase === "analyzing" && <ol className="mt-5 grid gap-2 sm:grid-cols-2">{steps.map((label, index) => { const done = index < currentIndex; const current = index === currentIndex; return <li key={label} className="flex items-center gap-2.5 text-[12px]"><span className={`grid h-6 w-6 place-items-center rounded-full ${done ? "bg-success text-success-foreground" : current ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{done ? <Check className="h-3.5 w-3.5" /> : current ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}</span><span className={current ? "font-semibold" : done ? "text-foreground" : "text-muted-foreground"}>{label}</span></li>; })}</ol>}</Panel>;
 }
 
 function RadarChart({ dimensions }) {
@@ -201,13 +232,19 @@ export function ResumeAnalyzer({ onImprove }) {
   const [dragging, setDragging] = useState(false);
   const [howItWorks, setHowItWorks] = useState(false);
   const [phase, setPhase] = useState("idle");
+  const [reviewText, setReviewText] = useState(null);
+  const [extractedPageCount, setExtractedPageCount] = useState(null);
+  const [usedOcr, setUsedOcr] = useState(false);
+  const [progressText, setProgressText] = useState("");
+  const [failureStage, setFailureStage] = useState("");
   const [error, setError] = useState("");
   const [analysis, setAnalysis] = useState(null);
   const [analyzedSignature, setAnalyzedSignature] = useState("");
 
   const fileSignature = file ? `${file.name}:${file.size}:${file.lastModified}` : "";
-  const isStale = Boolean(analysis && fileSignature !== analyzedSignature);
-  const canAnalyze = Boolean(file) && phase !== "reading" && phase !== "analyzing";
+  const contentSignature = `${fileSignature}:${reviewText ?? ""}`;
+  const isStale = Boolean(analysis && contentSignature !== analyzedSignature);
+  const canAnalyze = Boolean(file && reviewText?.trim().length >= 80) && phase !== "reading" && phase !== "analyzing";
 
   function validateFile(nextFile) {
     if (!nextFile || !fileType(nextFile)) return "Unsupported file type. Please upload a PDF, DOCX, or TXT resume.";
@@ -222,6 +259,9 @@ export function ResumeAnalyzer({ onImprove }) {
     setFile(nextFile);
     setAnalysis(null);
     setAnalyzedSignature("");
+    setReviewText(null);
+    setExtractedPageCount(null);
+    setUsedOcr(false);
     setPhase("idle");
   }
 
@@ -230,21 +270,41 @@ export function ResumeAnalyzer({ onImprove }) {
     event.target.value = "";
   }
 
-  async function analyze() {
-    if (!file) { setError("Choose a resume file before analyzing."); return; }
-    if (jobDescription.length > 3000) { setError("Job descriptions must be 3,000 characters or fewer."); return; }
-    setError(""); setAnalysis(null); setPhase("reading");
+  async function reviewExtractedText() {
+    if (!file) { setError("Choose a resume file before reviewing its text."); return; }
+    setError(""); setFailureStage(""); setAnalysis(null); setProgressText("Reading selectable text from your document."); setPhase("reading");
     try {
-      const { text: resumeText, pageCount } = await extractResume(file);
-      if (resumeText.trim().length < 80) throw new Error("We couldn't extract enough readable text. This may be a scanned image; try a text-based PDF or DOCX file.");
-      setPhase("analyzing");
-      const response = await fetch("/api/analyze-resume", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: file.name, resumeText: resumeText.slice(0, 45000), pageCount, jobDescription: jobDescription.trim() || null }) });
+      const result = await extractResume(file);
+      setReviewText(result.text);
+      setExtractedPageCount(result.pageCount);
+      setUsedOcr(Boolean(result.usedOcr));
+      setProgressText("");
+      setPhase("review");
+    } catch (caught) {
+      setPhase("error"); setFailureStage("reading"); setError(caught instanceof Error ? caught.message : "Something went wrong while extracting resume text.");
+    }
+  }
+
+  async function analyze() {
+    if (!file || reviewText === null) { setError("Review the extracted resume text before analyzing."); return; }
+    if (jobDescription.length > 3000) { setError("Job descriptions must be 3,000 characters or fewer."); return; }
+    const textForAnalysis = reviewText.trim();
+    if (textForAnalysis.length < 80) { setError("Add or correct the resume text above until it contains at least 80 characters."); return; }
+    setError(""); setFailureStage(""); setAnalysis(null); setPhase("analyzing");
+    try {
+      const response = await fetch("/api/analyze-resume", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: file.name, resumeText: textForAnalysis.slice(0, 45000), pageCount: extractedPageCount, jobDescription: jobDescription.trim() || null }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message || "Resume analysis couldn't be completed. Please try again.");
-      setAnalysis(payload.analysis); setAnalyzedSignature(fileSignature); setPhase("done");
+      setAnalysis(payload.analysis); setAnalyzedSignature(`${fileSignature}:${reviewText}`); setPhase("done");
     } catch (caught) {
-      setPhase("error"); setError(caught instanceof Error ? caught.message : "Something went wrong while connecting to the analysis service.");
+      setPhase("error"); setFailureStage("analyzing"); setError(caught instanceof Error ? caught.message : "Something went wrong while connecting to the analysis service.");
     }
+  }
+
+  function retryFailedAction() {
+    setError("");
+    if (failureStage === "reading") void reviewExtractedText();
+    else void analyze();
   }
 
   function downloadReport() {
