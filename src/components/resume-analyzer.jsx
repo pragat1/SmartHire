@@ -61,7 +61,7 @@ function fileType(file) {
   return "text/plain";
 }
 
-async function extractResume(file) {
+async function extractResume(file, onProgress = () => {}) {
   const buffer = await file.arrayBuffer();
   const extension = getExtension(file.name);
   if (extension === ".txt") return { text: new TextDecoder().decode(buffer), pageCount: null };
@@ -72,12 +72,47 @@ async function extractResume(file) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
   const document = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
   const pages = [];
-  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-    const page = await document.getPage(pageNumber);
-    const content = await page.getTextContent();
-    pages.push(content.items.map((item) => "str" in item ? item.str : "").join(" "));
+  let ocrWorker = null;
+  let usedOcr = false;
+  try {
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      const page = await document.getPage(pageNumber);
+      const content = await page.getTextContent();
+      let pageText = content.items.map((item) => "str" in item ? item.str : "").join(" ").trim();
+      const wordCount = pageText.match(/[\p{L}\p{N}]+/gu)?.length ?? 0;
+      if (pageText.length < 60 || wordCount < 10) {
+        usedOcr = true;
+        if (!ocrWorker) {
+          const { createWorker } = await import("tesseract.js");
+          ocrWorker = await createWorker("eng", 1, {
+            workerPath: "/vendor/tesseract/worker.min.js",
+            corePath: "/vendor/tesseract/core",
+            langPath: "/vendor/tesseract/lang",
+            gzip: true,
+            logger: (message) => {
+              if (message.status) onProgress(`${message.status}${typeof message.progress === "number" ? ` · ${Math.round(message.progress * 100)}%` : ""}`);
+            },
+          });
+        }
+        onProgress(`Recognizing scanned page ${pageNumber} of ${document.numPages}.`);
+        const viewport = page.getViewport({ scale: 1.8 });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const context = canvas.getContext("2d", { alpha: false });
+        if (!context) throw new Error("This browser couldn't prepare a PDF page for text recognition.");
+        await page.render({ canvas, canvasContext: context, viewport }).promise;
+        const recognized = await ocrWorker.recognize(canvas);
+        pageText = recognized.data.text.trim() || pageText;
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+      pages.push(pageText);
+    }
+  } finally {
+    if (ocrWorker) await ocrWorker.terminate();
   }
-  return { text: pages.join("\n"), pageCount: document.numPages };
+  return { text: pages.join("\n"), pageCount: document.numPages, usedOcr };
 }
 
 function band(score) {
@@ -160,10 +195,10 @@ function HowItWorks({ open, onClose }) {
   );
 }
 
-function LoadingState({ phase }) {
+function LoadingState({ phase, progressText }) {
   const steps = ["Reading resume content", "Extracting sections", "Evaluating ATS compatibility", "Checking skills and keywords", "Reviewing achievements and metrics", "Generating recommendations"];
   const currentIndex = phase === "reading" ? 1 : 2;
-  return <Panel className="mx-auto w-full max-w-2xl"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"><Loader2 className="h-5 w-5 animate-spin" /></div><div><h2 className="font-bold">Analyzing your resume</h2><p className="text-[12px] text-muted-foreground">This usually takes a few seconds while we review your document.</p></div></div><ol className="mt-5 grid gap-2 sm:grid-cols-2">{steps.map((label, index) => { const done = index < currentIndex; const current = index === currentIndex; return <li key={label} className="flex items-center gap-2.5 text-[12px]"><span className={`grid h-6 w-6 place-items-center rounded-full ${done ? "bg-success text-success-foreground" : current ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{done ? <Check className="h-3.5 w-3.5" /> : current ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}</span><span className={current ? "font-semibold" : done ? "text-foreground" : "text-muted-foreground"}>{label}</span></li>; })}</ol></Panel>;
+  return <Panel className="mx-auto w-full max-w-2xl"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"><Loader2 className="h-5 w-5 animate-spin" /></div><div><h2 className="font-bold">{phase === "reading" ? "Preparing your editable text preview" : "Analyzing your resume"}</h2><p className="text-[12px] text-muted-foreground">{progressText || (phase === "reading" ? "Reading your document and recognizing scanned pages when needed." : "This usually takes a few seconds while we review your document.")}</p></div></div>{phase === "analyzing" && <ol className="mt-5 grid gap-2 sm:grid-cols-2">{steps.map((label, index) => { const done = index < currentIndex; const current = index === currentIndex; return <li key={label} className="flex items-center gap-2.5 text-[12px]"><span className={`grid h-6 w-6 place-items-center rounded-full ${done ? "bg-success text-success-foreground" : current ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{done ? <Check className="h-3.5 w-3.5" /> : current ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}</span><span className={current ? "font-semibold" : done ? "text-foreground" : "text-muted-foreground"}>{label}</span></li>; })}</ol>}</Panel>;
 }
 
 function RadarChart({ dimensions }) {
@@ -201,13 +236,19 @@ export function ResumeAnalyzer({ onImprove }) {
   const [dragging, setDragging] = useState(false);
   const [howItWorks, setHowItWorks] = useState(false);
   const [phase, setPhase] = useState("idle");
+  const [reviewText, setReviewText] = useState(null);
+  const [extractedPageCount, setExtractedPageCount] = useState(null);
+  const [usedOcr, setUsedOcr] = useState(false);
+  const [progressText, setProgressText] = useState("");
+  const [failureStage, setFailureStage] = useState("");
   const [error, setError] = useState("");
   const [analysis, setAnalysis] = useState(null);
   const [analyzedSignature, setAnalyzedSignature] = useState("");
 
   const fileSignature = file ? `${file.name}:${file.size}:${file.lastModified}` : "";
-  const isStale = Boolean(analysis && fileSignature !== analyzedSignature);
-  const canAnalyze = Boolean(file) && phase !== "reading" && phase !== "analyzing";
+  const contentSignature = JSON.stringify([fileSignature, reviewText ?? ""]);
+  const isStale = Boolean(analysis && contentSignature !== analyzedSignature);
+  const canAnalyze = Boolean(file && reviewText?.trim().length >= 80) && phase !== "reading" && phase !== "analyzing";
 
   function validateFile(nextFile) {
     if (!nextFile || !fileType(nextFile)) return "Unsupported file type. Please upload a PDF, DOCX, or TXT resume.";
@@ -222,6 +263,9 @@ export function ResumeAnalyzer({ onImprove }) {
     setFile(nextFile);
     setAnalysis(null);
     setAnalyzedSignature("");
+    setReviewText(null);
+    setExtractedPageCount(null);
+    setUsedOcr(false);
     setPhase("idle");
   }
 
@@ -230,21 +274,41 @@ export function ResumeAnalyzer({ onImprove }) {
     event.target.value = "";
   }
 
-  async function analyze() {
-    if (!file) { setError("Choose a resume file before analyzing."); return; }
-    if (jobDescription.length > 3000) { setError("Job descriptions must be 3,000 characters or fewer."); return; }
-    setError(""); setAnalysis(null); setPhase("reading");
+  async function reviewExtractedText() {
+    if (!file) { setError("Choose a resume file before reviewing its text."); return; }
+    setError(""); setFailureStage(""); setAnalysis(null); setProgressText("Reading selectable text from your document."); setPhase("reading");
     try {
-      const { text: resumeText, pageCount } = await extractResume(file);
-      if (resumeText.trim().length < 80) throw new Error("We couldn't extract enough readable text. This may be a scanned image; try a text-based PDF or DOCX file.");
-      setPhase("analyzing");
-      const response = await fetch("/api/analyze-resume", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: file.name, resumeText: resumeText.slice(0, 45000), pageCount, jobDescription: jobDescription.trim() || null }) });
+      const result = await extractResume(file, setProgressText);
+      setReviewText(result.text);
+      setExtractedPageCount(result.pageCount);
+      setUsedOcr(Boolean(result.usedOcr));
+      setProgressText("");
+      setPhase("review");
+    } catch (caught) {
+      setPhase("error"); setFailureStage("reading"); setError(caught instanceof Error ? caught.message : "Something went wrong while extracting resume text.");
+    }
+  }
+
+  async function analyze() {
+    if (!file || reviewText === null) { setError("Review the extracted resume text before analyzing."); return; }
+    if (jobDescription.length > 3000) { setError("Job descriptions must be 3,000 characters or fewer."); return; }
+    const textForAnalysis = reviewText.trim();
+    if (textForAnalysis.length < 80) { setError("Add or correct the resume text above until it contains at least 80 characters."); return; }
+    setError(""); setFailureStage(""); setAnalysis(null); setPhase("analyzing");
+    try {
+      const response = await fetch("/api/analyze-resume", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: file.name, resumeText: textForAnalysis.slice(0, 45000), pageCount: extractedPageCount, jobDescription: jobDescription.trim() || null }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message || "Resume analysis couldn't be completed. Please try again.");
-      setAnalysis(payload.analysis); setAnalyzedSignature(fileSignature); setPhase("done");
+      setAnalysis(payload.analysis); setAnalyzedSignature(contentSignature); setPhase("done");
     } catch (caught) {
-      setPhase("error"); setError(caught instanceof Error ? caught.message : "Something went wrong while connecting to the analysis service.");
+      setPhase("error"); setFailureStage("analyzing"); setError(caught instanceof Error ? caught.message : "Something went wrong while connecting to the analysis service.");
     }
+  }
+
+  function retryFailedAction() {
+    setError("");
+    if (failureStage === "reading") void reviewExtractedText();
+    else void analyze();
   }
 
   function downloadReport() {
@@ -254,17 +318,37 @@ export function ResumeAnalyzer({ onImprove }) {
     const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${(file?.name || "resume").replace(/\.[^.]+$/, "")}-analysis.txt`; anchor.click(); URL.revokeObjectURL(url);
   }
 
-  const headerAction = useMemo(() => analysis ? <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={downloadReport}><Download /> Download Report</Button><Button onClick={analyze} disabled={!canAnalyze}><RefreshCw className={phase === "analyzing" ? "animate-spin" : ""} /> {phase === "analyzing" ? "Analyzing…" : "Re-analyze"}</Button></div> : <Button variant="outline" onClick={() => setHowItWorks(true)}><CircleHelp /> How it works?</Button>, [analysis, canAnalyze, phase, fileSignature]);
+  const headerAction = analysis ? <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={downloadReport}><Download /> Download Report</Button><Button onClick={analyze} disabled={!canAnalyze}><RefreshCw className={phase === "analyzing" ? "animate-spin" : ""} /> {phase === "analyzing" ? "Analyzing…" : "Re-analyze"}</Button></div> : <Button variant="outline" onClick={() => setHowItWorks(true)}><CircleHelp /> How it works?</Button>;
+  const clearResume = () => { setFile(null); setAnalysis(null); setAnalyzedSignature(""); setReviewText(null); setExtractedPageCount(null); setUsedOcr(false); setError(""); setFailureStage(""); setPhase("idle"); };
+  const resumePicker = <input ref={inputRef} type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={onFileInput} className="sr-only" />;
+  const resumeWordCount = reviewText?.match(/[\p{L}\p{N}][\p{L}\p{N}+#.\-/]*/gu)?.length ?? 0;
   return <main className="mx-auto w-full max-w-[1400px] flex-1 p-4 sm:p-5 lg:p-6"><HowItWorks open={howItWorks} onClose={() => setHowItWorks(false)} /><div className="space-y-4">
     <header className="flex min-w-0 flex-wrap items-center justify-end gap-3">{headerAction}</header>
     {analysis && phase === "done" ? <>
-      <Panel className="flex flex-wrap items-center justify-between gap-4"><div className="flex min-w-0 items-center gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><FileText className="h-5 w-5" /></div><div className="min-w-0"><div className="truncate text-[14px] font-bold">{analysis.fileName || file?.name}</div><div className="mt-1 text-[12px] text-muted-foreground">{file ? `${formatBytes(file.size)} · ` : ""}Analyzed just now{analysis.analyzedAt ? ` · ${new Date(analysis.analyzedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}</div></div></div><div className="flex shrink-0 items-center gap-1"><input ref={inputRef} type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={onFileInput} className="sr-only" /><Button variant="ghost" size="icon" aria-label="Choose another resume" onClick={() => inputRef.current?.click()}><RefreshCw /></Button><Button variant="ghost" size="icon" aria-label="Remove analyzed resume" onClick={() => { setFile(null); setAnalysis(null); setAnalyzedSignature(""); setError(""); setPhase("idle"); }}><Trash2 /></Button></div>{isStale && <div className="flex items-center gap-2 rounded-lg bg-warning/15 px-3 py-2 text-[12px] font-medium text-warning-foreground"><Info className="h-4 w-4" /> Your resume changed since this analysis. Re-analyze for updated results.</div>}</Panel>
+      <Panel className="flex flex-wrap items-center justify-between gap-4"><div className="flex min-w-0 items-center gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><FileText className="h-5 w-5" /></div><div className="min-w-0"><div className="truncate text-[14px] font-bold">{analysis.fileName || file?.name}</div><div className="mt-1 text-[12px] text-muted-foreground">{file ? `${formatBytes(file.size)} · ` : ""}Analyzed just now{analysis.analyzedAt ? ` · ${new Date(analysis.analyzedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}{usedOcr ? " · Scanned text recognized" : ""}</div></div></div><div className="flex shrink-0 items-center gap-1">{resumePicker}<Button variant="ghost" size="icon" aria-label="Choose another resume" onClick={() => inputRef.current?.click()}><RefreshCw /></Button><Button variant="ghost" size="icon" aria-label="Remove analyzed resume" onClick={clearResume}><Trash2 /></Button></div>{isStale && <div className="flex items-center gap-2 rounded-lg bg-warning/15 px-3 py-2 text-[12px] font-medium text-warning-foreground"><Info className="h-4 w-4" /> Your resume changed since this analysis. Re-analyze for updated results.</div>}</Panel>
       <div className="grid gap-3 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,2.05fr)]"><Panel><div className="text-[13px] font-semibold">Overall Resume Score</div><div className="mt-4 flex items-center gap-4"><ScoreRing score={analysis.overallScore} size={112} /><div className="min-w-0"><span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${toneClasses(band(analysis.overallScore).tone)}`}>{band(analysis.overallScore).label}</span><p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{analysis.explanation || "Not available. The analysis did not return enough evidence for an overall score."}</p></div></div></Panel><div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><ScoreCard icon={Target} label="ATS Score" score={analysis.scores?.ats} metric={analysis.scores?.atsMetric} /><ScoreCard icon={MessageSquareText} label="Grammar" score={analysis.scores?.grammar} metric={analysis.scores?.grammarMetric} /><ScoreCard icon={Zap} label="Impact" score={analysis.scores?.impact} metric={analysis.scores?.impactMetric} /><ScoreCard icon={FileText} label="Readability" score={analysis.scores?.readability} metric={analysis.scores?.readabilityMetric} /></div></div>
       <div className="grid gap-3 xl:grid-cols-2"><Panel><SectionTitle icon={Target} title="ATS Keyword Analysis" subtitle="Compare your resume against the supplied job description." /><div className="mt-4"><KeywordGroups keywords={analysis.keywords} onAddJobDescription={() => setAddingJobDescription(true)} />{addingJobDescription && <div className="mt-3 space-y-2"><label htmlFor="results-job-description" className="text-[11px] font-semibold">Job description</label><textarea id="results-job-description" value={jobDescription} onChange={(event) => setJobDescription(event.target.value.slice(0, 3000))} rows={3} placeholder="Paste the job description here…" className="w-full resize-y rounded-lg border border-input bg-background p-2.5 text-[12px] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" /><Button size="sm" onClick={analyze} disabled={!jobDescription.trim() || !canAnalyze}>Re-analyze with job description</Button></div>}</div></Panel><Panel><SectionTitle icon={Radar} title="Resume Strengths" subtitle="Dimensions supported by evidence in the analysis." /><div className="mt-2"><RadarChart dimensions={analysis.radar} /></div></Panel></div>
       <div className="grid gap-3 xl:grid-cols-2"><Panel><SectionTitle icon={AlertCircle} title="Missing Sections & Signals" subtitle="Issues detected in this analysis." /><div className="mt-3"><ResultList title="Issues" items={analysis.issues} onImprove={onImprove} /></div></Panel><Panel><SectionTitle icon={Sparkles} title="Top Improvement Recommendations" subtitle="Recommended next actions based on your analysis." /><div className="mt-3"><ResultList title="Recommendations" items={analysis.recommendations} kind="recommendation" onImprove={onImprove} /></div></Panel></div>
       <div className="grid gap-3 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.6fr)]"><Panel><SectionTitle icon={Target} title="Job Match" subtitle="Role-specific match from the supplied job description." /><div className="mt-3">{analysis.jobMatch?.available ? <div className="flex items-center gap-4"><ScoreRing score={analysis.jobMatch.score} size={96} /><div><div className="text-lg font-bold">{analysis.jobMatch.label || band(analysis.jobMatch.score).label}</div><p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{analysis.jobMatch.explanation}</p></div></div> : <div className="rounded-lg border border-dashed border-border bg-surface p-4 text-center text-[11px] text-muted-foreground">Add a job description before analysis to see how closely this resume matches a specific role.</div>}</div></Panel><Panel><SectionTitle icon={FileArchive} title="Resume Analytics" subtitle="Calculated from the extracted resume text." /><div className="mt-3"><AnalyticsGrid analytics={analysis.analytics} /></div></Panel></div>
     </> : <>
-      {phase === "reading" || phase === "analyzing" ? <LoadingState phase={phase} /> : <div className="grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,0.8fr)]"><div className="space-y-3"><Panel className={`border-dashed ${dragging ? "border-primary bg-primary/5" : ""}`}><div onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); chooseFile(event.dataTransfer.files?.[0] ?? null); }} className={`grid place-items-center rounded-lg border border-dashed border-border bg-surface/60 p-5 text-center transition-[min-height] sm:p-6 ${file ? "min-h-24" : "min-h-56"}`}><div className="max-w-md"><div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-primary/10 text-primary"><UploadCloud className="h-6 w-6" /></div><h2 className="mt-3 text-[16px] font-bold">{file ? "Replace your resume" : "Upload your resume to get started"}</h2><p className="mt-1 text-[12px] text-muted-foreground">PDF, DOCX or TXT · Maximum 5 MB</p><input ref={inputRef} type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={onFileInput} className="sr-only" /><Button className="mt-3" onClick={() => inputRef.current?.click()}><UploadCloud /> {file ? "Choose another file" : "Upload Resume"}</Button>{!file && <p className="mt-2 text-[11px] text-muted-foreground">or drag and drop here</p>}</div></div></Panel>{file && <div className="flex min-h-20 flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2.5 shadow-elegant"><div className="flex min-w-0 items-center gap-2.5"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><FileText className="h-4 w-4" /></div><div className="min-w-0"><div className="truncate text-[12px] font-bold">{file.name}</div><div className="mt-0.5 text-[11px] text-muted-foreground">{formatBytes(file.size)} · Ready to analyze</div></div></div><div className="flex shrink-0 items-center gap-1.5"><Button variant="ghost" size="icon" onClick={() => { setFile(null); setAnalysis(null); setError(""); setPhase("idle"); }} aria-label="Remove selected resume"><Trash2 /></Button><Button onClick={analyze} disabled={!canAnalyze}>Analyze Resume <ArrowRight /></Button></div></div>}{phase === "error" || error ? <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive" role="alert"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><div className="min-w-0"><div className="font-semibold">Couldn't analyze this resume</div><p className="mt-1 leading-relaxed">{error}</p><div className="mt-2 flex flex-wrap gap-x-4 gap-y-1"><Button variant="link" size="sm" className="h-auto px-0 text-destructive" onClick={() => { setError(""); setPhase("idle"); }}>Try again <ChevronRight /></Button><Button variant="link" size="sm" className="h-auto px-0 text-destructive" onClick={() => inputRef.current?.click()}>Choose another resume <ArrowRight /></Button></div></div></div> : null}</div><Panel className="h-fit bg-primary/[0.03]"><SectionTitle icon={CircleHelp} title="How it works" subtitle="A clear path from document to next steps." /><ol className="mt-4 space-y-3">{["Upload your latest resume", "Let AI review structure, content, and ATS signals", "Get specific improvements to make next"].map((item, index) => <li key={item} className="flex gap-3 text-[12px]"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{String(index + 1).padStart(2, "0")}</span><span className="pt-1 leading-relaxed text-muted-foreground">{item}</span></li>)}</ol><Button variant="link" className="mt-3 h-auto px-0" onClick={() => setHowItWorks(true)}>Learn more <ArrowRight /></Button></Panel></div>}
+      {phase === "reading" || phase === "analyzing" ? <LoadingState phase={phase} progressText={progressText} /> : <div className="grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,0.8fr)]"><div className="space-y-3">
+        {phase !== "review" && reviewText === null && <>
+          <Panel className={`border-dashed ${dragging ? "border-primary bg-primary/5" : ""}`}><div onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); chooseFile(event.dataTransfer.files?.[0] ?? null); }} className={`grid place-items-center rounded-lg border border-dashed border-border bg-surface/60 p-5 text-center transition-[min-height] sm:p-6 ${file ? "min-h-24" : "min-h-56"}`}><div className="max-w-md"><div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-primary/10 text-primary"><UploadCloud className="h-6 w-6" /></div><h2 className="mt-3 text-[16px] font-bold">{file ? "Replace your resume" : "Upload your resume to get started"}</h2><p className="mt-1 text-[12px] text-muted-foreground">PDF, DOCX or TXT · Maximum 5 MB</p>{resumePicker}<Button className="mt-3" onClick={() => inputRef.current?.click()}><UploadCloud /> {file ? "Choose another file" : "Upload Resume"}</Button>{!file && <p className="mt-2 text-[11px] text-muted-foreground">or drag and drop here</p>}</div></div></Panel>
+          {file && <div className="flex min-h-20 flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2.5 shadow-elegant"><div className="flex min-w-0 items-center gap-2.5"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><FileText className="h-4 w-4" /></div><div className="min-w-0"><div className="truncate text-[12px] font-bold">{file.name}</div><div className="mt-0.5 text-[11px] text-muted-foreground">{formatBytes(file.size)} · Ready for text review</div></div></div><div className="flex shrink-0 items-center gap-1.5"><Button variant="ghost" size="icon" onClick={clearResume} aria-label="Remove selected resume"><Trash2 /></Button><Button onClick={reviewExtractedText}>Review Extracted Text <ArrowRight /></Button></div></div>}
+        </>}
+        {phase === "review" && reviewText !== null && <>
+          <Panel className="space-y-3"><div className="flex flex-wrap items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><FileText className="h-4 w-4" /></div><div className="min-w-0"><h2 className="truncate text-[14px] font-bold">Review extracted resume text</h2><p className="text-[11px] text-muted-foreground">{file?.name} · {resumeWordCount.toLocaleString()} words{extractedPageCount ? ` · ${extractedPageCount} pages` : ""}</p></div></div><div className="flex items-center gap-1">{resumePicker}<Button variant="ghost" size="icon" onClick={() => inputRef.current?.click()} aria-label="Choose another resume"><RefreshCw /></Button><Button variant="ghost" size="icon" onClick={clearResume} aria-label="Remove selected resume"><Trash2 /></Button></div></div>
+            {usedOcr && <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-[12px] text-muted-foreground"><Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Scanned PDF pages were recognized with OCR. Review the text below and correct any recognition errors before analysis.</span></div>}
+            <div><label htmlFor="resume-text-review" className="text-[12px] font-semibold">Extracted text <span className="font-normal text-muted-foreground">— edits are included in analysis and document metrics</span></label><textarea id="resume-text-review" value={reviewText} onChange={(event) => { setReviewText(event.target.value.slice(0, 45000)); setAnalysis(null); setError(""); }} rows={14} maxLength={45000} spellCheck className="mt-2 w-full resize-y rounded-lg border border-input bg-background p-3 font-mono text-[12px] leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-describedby="resume-text-review-count" />
+              <div id="resume-text-review-count" className="mt-1 flex flex-wrap justify-between gap-2 text-[11px] text-muted-foreground"><span>{reviewText.length < 80 ? "At least 80 characters are needed to analyze." : "Text preview ready to analyze."}</span><span>{reviewText.length.toLocaleString()} / 45,000 characters · {resumeWordCount.toLocaleString()} words</span></div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3"><Button variant="outline" onClick={reviewExtractedText}>Extract again</Button><Button onClick={analyze} disabled={!canAnalyze}>Analyze Resume <ArrowRight /></Button></div>
+          </Panel>
+        </>}
+        {(phase === "error" || error) && <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive" role="alert"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><div className="min-w-0"><div className="font-semibold">Couldn't {failureStage === "reading" ? "read" : "analyze"} this resume</div><p className="mt-1 leading-relaxed">{error}</p><div className="mt-2 flex flex-wrap gap-x-4 gap-y-1"><Button variant="link" size="sm" className="h-auto px-0 text-destructive" onClick={retryFailedAction}>Try again <ChevronRight /></Button><Button variant="link" size="sm" className="h-auto px-0 text-destructive" onClick={() => inputRef.current?.click()}>Choose another resume <ArrowRight /></Button></div></div></div>}
+        {reviewText === null && <Panel><SectionTitle title="What we analyze" subtitle="These capabilities describe the checks available, not your results." /><div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{CAPABILITIES.map(([Icon, title, description]) => <div key={title} className="rounded-xl border border-border bg-surface p-4"><div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="h-4 w-4" /></div><div className="mt-3 text-[13px] font-semibold">{title}</div><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{description}</p></div>)}</div></Panel>}
+        {reviewText === null && <Panel><SectionTitle icon={MessageSquareText} title="Get more personalized results" subtitle="Add a job description to compare your resume against a specific role." /><div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.8fr)]"><div><label htmlFor="job-description" className="text-[12px] font-semibold">Paste Job Description <span className="font-normal text-muted-foreground">(Optional)</span></label><textarea id="job-description" value={jobDescription} onChange={(event) => setJobDescription(event.target.value.slice(0, 3000))} rows={6} placeholder="Paste the job description here…" className="mt-2 w-full resize-y rounded-xl border border-input bg-background p-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" /><div className="mt-1 text-[11px] text-muted-foreground">{jobDescription.length} / 3000 characters</div></div><div><div className="text-[12px] font-semibold">Target-role helpers</div><div className="mt-3 flex flex-wrap gap-2">{["Frontend Developer", "Backend Engineer", "Full Stack Developer", "Data Analyst", "UI/UX Designer"].map((role) => <button type="button" key={role} onClick={() => setJobDescription((current) => current ? `${current}\n\nTarget role: ${role}`.slice(0, 3000) : `Target role: ${role}`)} className="rounded-full border border-border bg-surface px-3 py-1.5 text-[11px] font-medium transition hover:border-primary/40 hover:text-primary">{role}</button>)}</div><div className="mt-5 flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />Role chips only help start your input; they are not analysis results.</div></div></div></Panel>}
+      </div>{reviewText === null && <Panel className="h-fit bg-primary/[0.03]"><SectionTitle icon={CircleHelp} title="How it works" subtitle="A clear path from document to next steps." /><ol className="mt-4 space-y-3">{["Upload your latest resume", "Review and correct extracted text", "Get specific improvements to make next"].map((item, index) => <li key={item} className="flex gap-3 text-[12px]"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{String(index + 1).padStart(2, "0")}</span><span className="pt-1 leading-relaxed text-muted-foreground">{item}</span></li>)}</ol><Button variant="link" className="mt-3 h-auto px-0" onClick={() => setHowItWorks(true)}>Learn more <ArrowRight /></Button></Panel>}</div>}
       <Panel><SectionTitle title="What we analyze" subtitle="These capabilities describe the checks available, not your results." /><div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{CAPABILITIES.map(([Icon, title, description]) => <div key={title} className="rounded-xl border border-border bg-surface p-4"><div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="h-4 w-4" /></div><div className="mt-3 text-[13px] font-semibold">{title}</div><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{description}</p></div>)}</div></Panel>
       <Panel><SectionTitle icon={MessageSquareText} title="Get more personalized results" subtitle="Add a job description to compare your resume against a specific role." /><div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.8fr)]"><div><label htmlFor="job-description" className="text-[12px] font-semibold">Paste Job Description <span className="font-normal text-muted-foreground">(Optional)</span></label><textarea id="job-description" value={jobDescription} onChange={(event) => setJobDescription(event.target.value.slice(0, 3000))} rows={6} placeholder="Paste the job description here…" className="mt-2 w-full resize-y rounded-xl border border-input bg-background p-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" /><div className="mt-1 text-[11px] text-muted-foreground">{jobDescription.length} / 3000 characters</div></div><div><div className="text-[12px] font-semibold">Target-role helpers</div><div className="mt-3 flex flex-wrap gap-2">{["Frontend Developer", "Backend Engineer", "Full Stack Developer", "Data Analyst", "UI/UX Designer"].map((role) => <button type="button" key={role} onClick={() => setJobDescription((current) => current ? `${current}\n\nTarget role: ${role}`.slice(0, 3000) : `Target role: ${role}`)} className="rounded-full border border-border bg-surface px-3 py-1.5 text-[11px] font-medium transition hover:border-primary/40 hover:text-primary">{role}</button>)}</div><div className="mt-5 flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />Role chips only help start your input; they are not analysis results.</div></div></div></Panel>
     </>}
