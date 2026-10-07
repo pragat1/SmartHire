@@ -246,7 +246,7 @@ export function ResumeAnalyzer({ onImprove }) {
   const [analyzedSignature, setAnalyzedSignature] = useState("");
 
   const fileSignature = file ? `${file.name}:${file.size}:${file.lastModified}` : "";
-  const contentSignature = `${fileSignature}:${reviewText ?? ""}`;
+  const contentSignature = JSON.stringify([fileSignature, reviewText ?? ""]);
   const isStale = Boolean(analysis && contentSignature !== analyzedSignature);
   const canAnalyze = Boolean(file && reviewText?.trim().length >= 80) && phase !== "reading" && phase !== "analyzing";
 
@@ -299,7 +299,7 @@ export function ResumeAnalyzer({ onImprove }) {
       const response = await fetch("/api/analyze-resume", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: file.name, resumeText: textForAnalysis.slice(0, 45000), pageCount: extractedPageCount, jobDescription: jobDescription.trim() || null }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message || "Resume analysis couldn't be completed. Please try again.");
-      setAnalysis(payload.analysis); setAnalyzedSignature(`${fileSignature}:${reviewText}`); setPhase("done");
+      setAnalysis(payload.analysis); setAnalyzedSignature(contentSignature); setPhase("done");
     } catch (caught) {
       setPhase("error"); setFailureStage("analyzing"); setError(caught instanceof Error ? caught.message : "Something went wrong while connecting to the analysis service.");
     }
