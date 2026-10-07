@@ -61,7 +61,7 @@ function fileType(file) {
   return "text/plain";
 }
 
-async function extractResume(file) {
+async function extractResume(file, onProgress = () => {}) {
   const buffer = await file.arrayBuffer();
   const extension = getExtension(file.name);
   if (extension === ".txt") return { text: new TextDecoder().decode(buffer), pageCount: null };
@@ -89,8 +89,12 @@ async function extractResume(file) {
             corePath: "/vendor/tesseract/core",
             langPath: "/vendor/tesseract/lang",
             gzip: true,
+            logger: (message) => {
+              if (message.status) onProgress(`${message.status}${typeof message.progress === "number" ? ` · ${Math.round(message.progress * 100)}%` : ""}`);
+            },
           });
         }
+        onProgress(`Recognizing scanned page ${pageNumber} of ${document.numPages}.`);
         const viewport = page.getViewport({ scale: 1.8 });
         const canvas = document.createElement("canvas");
         canvas.width = Math.ceil(viewport.width);
@@ -274,7 +278,7 @@ export function ResumeAnalyzer({ onImprove }) {
     if (!file) { setError("Choose a resume file before reviewing its text."); return; }
     setError(""); setFailureStage(""); setAnalysis(null); setProgressText("Reading selectable text from your document."); setPhase("reading");
     try {
-      const result = await extractResume(file);
+      const result = await extractResume(file, setProgressText);
       setReviewText(result.text);
       setExtractedPageCount(result.pageCount);
       setUsedOcr(Boolean(result.usedOcr));
