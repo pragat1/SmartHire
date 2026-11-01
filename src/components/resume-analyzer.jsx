@@ -97,7 +97,7 @@ async function extractResume(file, onProgress = () => {}) {
         }
         onProgress(`Recognizing scanned page ${pageNumber} of ${document.numPages}.`);
         const viewport = page.getViewport({ scale: 1.8 });
-        const canvas = document.createElement("canvas");
+        const canvas = globalThis.document.createElement("canvas");
         canvas.width = Math.ceil(viewport.width);
         canvas.height = Math.ceil(viewport.height);
         const context = canvas.getContext("2d", { alpha: false });
