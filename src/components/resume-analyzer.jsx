@@ -62,6 +62,18 @@ function fileType(file) {
 }
 
 async function extractResume(file, onProgress = () => {}) {
+  if (typeof Map.prototype.getOrInsertComputed !== "function") {
+    Object.defineProperty(Map.prototype, "getOrInsertComputed", {
+      configurable: true,
+      value(key, callback) {
+        if (this.has(key)) return this.get(key);
+        const value = callback(key, this);
+        this.set(key, value);
+        return value;
+      },
+      writable: true,
+    });
+  }
   const buffer = await file.arrayBuffer();
   const extension = getExtension(file.name);
   if (extension === ".txt") return { text: new TextDecoder().decode(buffer), pageCount: null };
