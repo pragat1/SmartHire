@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { deriveAnalytics } from "@/lib/resume-analysis";
+
 
 const inputSchema = z.object({
   fileName: z.string().trim().min(1).max(160),
@@ -50,32 +52,6 @@ function parseJson(text) {
   const start = candidate.indexOf("{"); const end = candidate.lastIndexOf("}");
   if (start < 0 || end < start) return null;
   try { return JSON.parse(candidate.slice(start, end + 1)); } catch { return null; }
-}
-
-const actionVerbs = new Set("achieved accelerated automated built collaborated created delivered designed developed directed enhanced established implemented improved increased launched led managed optimized organized reduced resolved scaled streamlined transformed upgraded".split(" "));
-const skillTerms = new Set("javascript typescript react angular vue node.js python java c# c++ go rust sql postgresql mongodb aws azure gcp docker kubernetes terraform git html css accessibility figma tableau power bi excel machine learning data analysis rest api graphql next.js redux jest playwright linux agile scrum leadership communication project management".split(" "));
-const buzzwords = new Set("innovative strategic dynamic passionate synergy results-driven go-getter thought-leader team-player".split(" "));
-
-function deriveAnalytics(text, pageCount) {
-  const words = text.match(/[\p{L}\p{N}][\p{L}\p{N}+#.\-/]*/gu) ?? [];
-  const normalizedWords = words.map((word) => word.toLowerCase().replace(/[^\p{L}\p{N}]/gu, ""));
-  const sentences = text.split(/[.!?]+/).filter((sentence) => sentence.trim().length > 0).length;
-  const normalizedText = ` ${text.toLowerCase().replace(/[^a-z0-9+#]+/g, " ").trim()} `;
-  const foundSkills = [...skillTerms].filter((term) => normalizedText.includes(` ${term.toLowerCase().replace(/[^a-z0-9+#]+/g, " ").trim()} `));
-  const actionVerbCount = normalizedWords.filter((word) => actionVerbs.has(word)).length;
-  const buzzwordCount = [...buzzwords].filter((word) => text.toLowerCase().includes(word)).length;
-  const passiveSignals = (text.match(/\b(?:was|were|is|are|been|being)\s+(?:\w+ed|\w+en)\b/gi) ?? []).length;
-  const minutes = Math.max(1, Math.ceil(words.length / 200));
-  return {
-    wordCount: words.length,
-    pageCount,
-    readingTime: `${minutes} min${minutes === 1 ? "" : "s"}`,
-    actionVerbs: actionVerbCount,
-    keywordCount: foundSkills.length,
-    buzzwords: buzzwordCount,
-    sentences,
-    passiveVoice: passiveSignals === 0 ? "No clear passive signals" : `${passiveSignals} possible passive phrases`,
-  };
 }
 
 export const Route = createFileRoute("/api/analyze-resume")({
