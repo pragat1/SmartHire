@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { deriveAnalytics } from "@/lib/resume-analysis";
+
 
 const inputSchema = z.object({
   fileName: z.string().trim().min(1).max(160),
