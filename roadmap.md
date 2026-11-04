@@ -7,4 +7,7 @@
 - [x] Restructure the analyzer into compact upload, in-progress, error, and results states
 - [x] Keep AI-derived scores and recommendations evidence-based; support job-specific re-analysis and complete report export
 - [x] Verify scanned PDF OCR, corrected-text handoff, OCR stays on app-hosted assets, and mobile layout with a controlled analysis response
-- [ ] Verify a successful live AI analysis (blocked by insufficient workspace AI credits)
+- [x] Verify a successful live AI analysis (credits restored; narrative merges, scores stay deterministic)
+- [x] Deterministic scoring engine as the single source of analyzer scores (src/lib/resume-analysis.js); AI demoted to optional narrative layer
+- [x] Instant analysis without gateway dependency; automatic fallback with honest note when AI is unavailable
+- [x] Compact results UI: smaller cards/rings, merged job match into keyword panel, tighter spacing, zero mobile overflow
