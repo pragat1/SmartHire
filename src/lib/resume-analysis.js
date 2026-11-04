@@ -40,7 +40,7 @@ const CORE_SECTIONS = ["summary", "experience", "education", "skills"];
 const EXTRA_SECTIONS = ["projects", "certifications", "achievements", "languages"];
 
 const STOPWORDS = new Set(
-  "the and for with you your our are will have this that from they their about into work working role team teams job use using can must able across within also more most other others such well only every each any all new like just make made want need help helps including include includes experience experienced years year strong excellent great good ability candidate ideal plus etc who what when where why how not has had was were been being its it's don't didn't we us i'm".split(
+  "the and for with you your our are will have this that from they their about into work working role team teams job use using can must able across within also more most other others such well only every each any all new like just make made want need help helps including include includes experience experienced years year strong excellent great good ability candidate ideal plus etc who what when where why how not has had was were been being its it's don't didn't we us i'm required required plus preferred ideal candidate opportunity benefits salary equal employer must nice bonus position company apply looking seeking hiring join offer degree responsibilities requirements qualifications duties mission perks compensation".split(
     " ",
   ),
 );
@@ -151,7 +151,7 @@ export function matchJobDescription(resumeText, jobDescription) {
     explanation:
       total === 0
         ? "No recognizable role keywords were found in this job description."
-        : `${matched.length} of ${total} job keywords appear in your resume, ${partial.length} appear in a related form, and ${missing.length} are missing. Score = (matched + half of partial matches) ÷ total keywords.`,
+        : `${matched.length} of ${total} job keywords appear in your resume, ${partial.length} appear in a related form, and ${missing.length} ${missing.length === 1 ? "is" : "are"} missing. Score = (matched + half of partial matches) ÷ total keywords.`,
     matched,
     partial,
     missing,
@@ -185,12 +185,16 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
 
   const bullets = lines.filter(isBulletLine);
   const bulletBodies = bullets.map((line) => line.replace(/^(?:[•\-\*▪·–—]|\d+[.)])\s+/, ""));
+  const readUnits = bulletBodies.length >= 3 ? bulletBodies : sentences.map((sentence) => sentence.replace(/^(?:[•\-\*▪·–—]|\d+[.)])\s+/, "")).filter(Boolean);
+  const unitWordCounts = readUnits.map((unit) => wordTokens(unit).length);
+  const longUnits = unitWordCounts.filter((count) => count > 28).length;
+  const avgUnitWords = unitWordCounts.reduce((total, count) => total + count, 0) / Math.max(1, readUnits.length);
   const hasEmail = /[\w.+-]+@[\w-]+\.[\w.-]{2,}/.test(raw);
   const hasPhone = /(\+?\d[\d\s().-]{7,}\d)/.test(raw);
   const hasLinks = /linkedin\.com|github\.com|gitlab\.com|portfolio/i.test(raw);
   const yearStripped = (line) => line.replace(/\b(?:19|20)\d{2}\b/g, "");
   const quantifiedBullets = bulletBodies.filter((line) => /\d/.test(yearStripped(line))).length;
-  const bulletOrSentenceUnits = bulletBodies.length >= 3 ? bulletBodies : sentences.map((sentence) => sentence.replace(/^(?:[•\-\*▪·–—]|\d+[.)])\s+/, ""));
+  const bulletOrSentenceUnits = readUnits;
   const actionVerbStarts = bulletOrSentenceUnits.filter((line) => {
     const firstWord = (line.match(/[\p{L}]+/u) ?? [""])[0].toLowerCase();
     return ACTION_VERBS.has(firstWord);
@@ -198,8 +202,6 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
   const weakOpenerLines = bulletOrSentenceUnits.filter((line) => WEAK_OPENERS.some((opener) => line.toLowerCase().startsWith(opener))).length;
   const passiveCount = (raw.match(/\b(?:was|were|is|are|been|being)\s+(?:\w+ed|\w+en)\b/gi) ?? []).length;
   const buzzwordHits = [...BUZZWORDS].filter((word) => normalized.includes(` ${normalizeTerm(word)} `)).length;
-  const longSentences = sentences.filter((sentence) => (wordTokens(sentence).length ?? 0) > 25).length;
-  const avgSentenceWords = wordCount / sentenceCount;
   const longWordRatio = words.filter((word) => word.length > 12).length / Math.max(1, wordCount);
   const skillsFound = SKILL_TERMS.filter((term) => hasTerm(normalized, normalizeTerm(term)));
 
@@ -213,31 +215,33 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
     ["Summary section", presentSections.includes("summary"), 10],
     ["Bullet formatting", bullets.length >= 8 ? true : bullets.length >= 3 ? "partial" : false, 20],
   ];
-  const ats = clamp(atsChecks.reduce((total, [, value, points]) => total + (value === true ? points : value === "partial" ? points / 2 : 0), 0));
+  const ats = Math.round(clamp(atsChecks.reduce((total, [, value, points]) => total + (value === true ? points : value === "partial" ? points / 2 : 0), 0)));
   const atsMetric = `${hasEmail ? "Email found" : "No email"} · ${hasPhone ? "phone found" : "no phone"} · ${presentSections.length}/${SECTION_DEFS.length} standard sections · ${bullets.length} bullet points`;
 
   // --- Writing quality (grammar proxies from the text itself) ---
   const passiveRatio = passiveCount / sentenceCount;
-  const longSentenceRatio = longSentences / sentenceCount;
-  const grammar = clamp(100 - clamp(passiveRatio * 250, 0, 30) - Math.min(45, buzzwordHits * 15) - clamp(longSentenceRatio * 200, 0, 25));
-  const grammarMetric = `${passiveCount} passive phrases · ${buzzwordHits} buzzwords · ${Math.round(longSentenceRatio * 100)}% long sentences`;
+  const longUnitRatio = longUnits / Math.max(1, readUnits.length);
+  const grammar = Math.round(clamp(100 - clamp(passiveRatio * 250, 0, 30) - Math.min(45, buzzwordHits * 15) - clamp(longUnitRatio * 200, 0, 25)));
+  const grammarMetric = `${passiveCount} passive phrases · ${buzzwordHits} buzzwords · ${Math.round(longUnitRatio * 100)}% overly long lines`;
 
   // --- Impact (quantified achievements + strong verb openings) ---
   const quantifiedRatio = quantifiedBullets / Math.max(1, bulletOrSentenceUnits.length);
   const verbShare = actionVerbStarts / Math.max(1, bulletOrSentenceUnits.length);
-  const impact = clamp(0.6 * clamp(quantifiedRatio / 0.5) + 0.4 * verbShare * 100 - Math.min(24, weakOpenerLines * 8));
+  const impact = Math.round(clamp(0.6 * Math.min(100, (quantifiedRatio / 0.5) * 100) + 0.4 * verbShare * 100 - Math.min(24, weakOpenerLines * 8)));
   const impactMetric = `${quantifiedBullets} quantified bullets (${Math.round(quantifiedRatio * 100)}%) · ${Math.round(verbShare * 100)}% start with action verbs`;
 
   // --- Readability (sentence length + word complexity) ---
-  const sentenceLengthDeviation = avgSentenceWords < 11 ? (11 - avgSentenceWords) / 11 : avgSentenceWords > 22 ? (avgSentenceWords - 22) / 22 : 0;
-  const readability = clamp(100 - clamp(sentenceLengthDeviation, 0, 1) * 70 - clamp(longWordRatio * 600, 0, 40));
-  const readabilityMetric = `${Math.round(avgSentenceWords)} words/sentence · ${Math.round(longWordRatio * 100)}% long words · ${words.length ? "" : ""}readable length`;
+  const unitIsBullets = bulletBodies.length >= 3;
+  const idealRange = unitIsBullets ? [8, 25] : [11, 22];
+  const lengthDeviation = avgUnitWords < idealRange[0] ? (idealRange[0] - avgUnitWords) / idealRange[0] : avgUnitWords > idealRange[1] ? (avgUnitWords - idealRange[1]) / idealRange[1] : 0;
+  const readability = Math.round(clamp(100 - clamp(lengthDeviation, 0, 1) * 70 - clamp(longWordRatio * 600, 0, 40)));
+  const readabilityMetric = `${Math.round(avgUnitWords)} words per ${unitIsBullets ? "bullet" : "sentence"} · ${Math.round(longWordRatio * 100)}% long words`;
 
   // --- Structure completeness ---
   const corePoints = CORE_SECTIONS.filter((key) => presentSections.includes(key)).length * 15;
   const extraPoints = EXTRA_SECTIONS.filter((key) => presentSections.includes(key)).length * 7;
   const lengthPoints = wordCount >= 300 && wordCount <= 1500 ? 19 : (wordCount >= 150 && wordCount < 300) || (wordCount > 1500 && wordCount <= 2000) ? 10 : 0;
-  const structure = clamp(corePoints + extraPoints + lengthPoints);
+  const structure = Math.round(clamp(corePoints + extraPoints + lengthPoints));
   const structureMetric = `${presentSections.length} sections detected · ${wordCount.toLocaleString()} words`;
 
   const overallScore = Math.round(0.3 * ats + 0.2 * grammar + 0.25 * impact + 0.15 * readability + 0.1 * structure);
@@ -266,7 +270,7 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
   if (presentSections.length >= 5) strengths.push(`${presentSections.length} standard resume sections detected`);
   if (skillsFound.length >= 10) strengths.push(`${skillsFound.length} recognized skills identified`);
   if (buzzwordHits === 0) strengths.push("No filler buzzwords detected");
-  if (avgSentenceWords >= 11 && avgSentenceWords <= 22) strengths.push("Comfortable sentence length for recruiters");
+  if (avgUnitWords >= idealRange[0] && avgUnitWords <= idealRange[1]) strengths.push(unitIsBullets ? "Bullets are a scannable length" : "Comfortable sentence length for recruiters");
   if (passiveCount === 0) strengths.push("No passive-voice signals detected");
   if (wordCount >= 300 && wordCount <= 1500) strengths.push("Length suits a 1–2 page resume");
 
@@ -282,12 +286,13 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
   if (quantifiedRatio < 0.3 && bulletOrSentenceUnits.length >= 3) addIssue("low-quantified", "Few quantified achievements", `Only ${quantifiedBullets} of ${bulletOrSentenceUnits.length} bullets contain a measurable result. Numbers (%, $, counts, timeframes) make impact concrete.`, "High");
   if (buzzwordHits > 0) addIssue("buzzwords", `${buzzwordHits} filler buzzword${buzzwordHits === 1 ? "" : "s"} detected`, "Terms like \"results-driven\" or \"team-player\" say little on their own; replace them with evidence.", "Low");
   if (passiveRatio > 0.1) addIssue("passive-voice", `${passiveCount} possible passive phrases`, "Passive constructions hide who did the work. Prefer active sentences starting with a verb.", "Medium");
-  if (avgSentenceWords > 25) addIssue("long-sentences", "Long sentences", `Sentences average ${Math.round(avgSentenceWords)} words. Aim for 11–22 words so content scans quickly.`, "Medium");
+  if (avgUnitWords > 28) addIssue("long-sentences", "Long sentences and bullets", `Lines average ${Math.round(avgUnitWords)} words. Aim for 8–25 words so content scans quickly.`, "Medium");
   if (wordCount < 250) addIssue("too-short", "Resume is very short", `Only ${wordCount} words were detected. A one-page resume typically has 350–700 words of content.`, "High");
   if (wordCount > 1800) addIssue("too-long", "Resume is very long", `${wordCount.toLocaleString()} words were detected — likely more than 2 pages. Trim older or less relevant content.`, "Medium");
   if (!hasLinks) addIssue("no-links", "No professional links detected", "A LinkedIn, GitHub, or portfolio URL gives recruiters a fast way to verify your work.", "Low");
   const priorityOrder = { High: 0, Medium: 1, Low: 2 };
   issues.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+  const cappedIssues = issues.slice(0, 8);
 
   const recommendationTemplates = {
     "weak-openers": { title: "Rewrite weak bullet openers with action verbs", explanation: "Every bullet should start with a verb like Led, Built, Automated, or Reduced so achievements surface immediately.", suggestedImprovement: "Replace phrases like \"Responsible for\" or \"Worked on\" with a strong verb plus the result you delivered." },
@@ -306,7 +311,7 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
     "missing-projects": { title: "Add a Projects section", explanation: "Projects demonstrate applied skills, especially when work experience is limited.", suggestedImprovement: "List 2–4 projects with the problem, your role, stack, and an outcome." },
     "missing-certifications": { title: "Add a Certifications section", explanation: "Certifications are easy keyword wins and signal current learning.", suggestedImprovement: "Add a heading starting with \"Certifications\" and list title, issuer, and year." },
   };
-  const recommendations = issues
+  const recommendations = cappedIssues
     .map((issue) => {
       const template = recommendationTemplates[issue.id];
       if (!template) return null;
@@ -330,7 +335,7 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
       { label: "Skills", value: Math.round(clamp(skillsFound.length * 8)) },
       { label: "Structure", value: Math.round(structure) },
     ],
-    issues,
+    issues: cappedIssues,
     recommendations,
     jobMatch: { available: false, score: null, label: null, explanation: null },
     analytics: deriveAnalytics(raw, pageCount),
