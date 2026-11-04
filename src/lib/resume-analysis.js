@@ -185,6 +185,10 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
 
   const bullets = lines.filter(isBulletLine);
   const bulletBodies = bullets.map((line) => line.replace(/^(?:[•\-\*▪·–—]|\d+[.)])\s+/, ""));
+  const readUnits = bulletBodies.length >= 3 ? bulletBodies : sentences.map((sentence) => sentence.replace(/^(?:[•\-\*▪·–—]|\d+[.)])\s+/, "")).filter(Boolean);
+  const unitWordCounts = readUnits.map((unit) => wordTokens(unit).length);
+  const longUnits = unitWordCounts.filter((count) => count > 28).length;
+  const avgUnitWords = unitWordCounts.reduce((total, count) => total + count, 0) / Math.max(1, readUnits.length);
   const hasEmail = /[\w.+-]+@[\w-]+\.[\w.-]{2,}/.test(raw);
   const hasPhone = /(\+?\d[\d\s().-]{7,}\d)/.test(raw);
   const hasLinks = /linkedin\.com|github\.com|gitlab\.com|portfolio/i.test(raw);
@@ -198,10 +202,6 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
   const weakOpenerLines = bulletOrSentenceUnits.filter((line) => WEAK_OPENERS.some((opener) => line.toLowerCase().startsWith(opener))).length;
   const passiveCount = (raw.match(/\b(?:was|were|is|are|been|being)\s+(?:\w+ed|\w+en)\b/gi) ?? []).length;
   const buzzwordHits = [...BUZZWORDS].filter((word) => normalized.includes(` ${normalizeTerm(word)} `)).length;
-  const readUnits = bulletBodies.length >= 3 ? bulletBodies : sentences.map((sentence) => sentence.replace(/^(?:[•\-\*▪·–—]|\d+[.)])\s+/, "")).filter(Boolean);
-  const unitWordCounts = readUnits.map((unit) => wordTokens(unit).length);
-  const longUnits = unitWordCounts.filter((count) => count > 28).length;
-  const avgUnitWords = unitWordCounts.reduce((total, count) => total + count, 0) / Math.max(1, readUnits.length);
   const longWordRatio = words.filter((word) => word.length > 12).length / Math.max(1, wordCount);
   const skillsFound = SKILL_TERMS.filter((term) => hasTerm(normalized, normalizeTerm(term)));
 
