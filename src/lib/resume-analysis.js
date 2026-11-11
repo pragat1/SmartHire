@@ -175,6 +175,7 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
   const sentences = splitSentences(raw);
   const sentenceCount = Math.max(1, sentences.length);
   const normalized = normalizeText(raw);
+  const evidenceCap = wordCount < 100 ? 40 : wordCount < 150 ? 55 : wordCount < 250 ? 68 : 100;
 
   const presentSections = [];
   const missingSections = [];
@@ -215,33 +216,33 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
     ["Summary section", presentSections.includes("summary"), 10],
     ["Bullet formatting", bullets.length >= 8 ? true : bullets.length >= 3 ? "partial" : false, 20],
   ];
-  const ats = Math.round(clamp(atsChecks.reduce((total, [, value, points]) => total + (value === true ? points : value === "partial" ? points / 2 : 0), 0)));
+  const ats = Math.round(Math.min(evidenceCap, clamp(atsChecks.reduce((total, [, value, points]) => total + (value === true ? points : value === "partial" ? points / 2 : 0), 0))));
   const atsMetric = `${hasEmail ? "Email found" : "No email"} · ${hasPhone ? "phone found" : "no phone"} · ${presentSections.length}/${SECTION_DEFS.length} standard sections · ${bullets.length} bullet points`;
 
   // --- Writing quality (grammar proxies from the text itself) ---
   const passiveRatio = passiveCount / sentenceCount;
   const longUnitRatio = longUnits / Math.max(1, readUnits.length);
-  const grammar = Math.round(clamp(100 - clamp(passiveRatio * 250, 0, 30) - Math.min(45, buzzwordHits * 15) - clamp(longUnitRatio * 200, 0, 25)));
+  const grammar = Math.round(Math.min(evidenceCap, clamp(100 - clamp(passiveRatio * 250, 0, 30) - Math.min(45, buzzwordHits * 15) - clamp(longUnitRatio * 200, 0, 25))));
   const grammarMetric = `${passiveCount} passive phrases · ${buzzwordHits} buzzwords · ${Math.round(longUnitRatio * 100)}% overly long lines`;
 
   // --- Impact (quantified achievements + strong verb openings) ---
   const quantifiedRatio = quantifiedBullets / Math.max(1, bulletOrSentenceUnits.length);
   const verbShare = actionVerbStarts / Math.max(1, bulletOrSentenceUnits.length);
-  const impact = Math.round(clamp(0.6 * Math.min(100, (quantifiedRatio / 0.5) * 100) + 0.4 * verbShare * 100 - Math.min(24, weakOpenerLines * 8)));
+  const impact = Math.round(Math.min(evidenceCap, clamp(0.6 * Math.min(100, (quantifiedRatio / 0.5) * 100) + 0.4 * verbShare * 100 - Math.min(24, weakOpenerLines * 8))));
   const impactMetric = `${quantifiedBullets} quantified bullets (${Math.round(quantifiedRatio * 100)}%) · ${Math.round(verbShare * 100)}% start with action verbs`;
 
   // --- Readability (sentence length + word complexity) ---
   const unitIsBullets = bulletBodies.length >= 3;
   const idealRange = unitIsBullets ? [8, 25] : [11, 22];
   const lengthDeviation = avgUnitWords < idealRange[0] ? (idealRange[0] - avgUnitWords) / idealRange[0] : avgUnitWords > idealRange[1] ? (avgUnitWords - idealRange[1]) / idealRange[1] : 0;
-  const readability = Math.round(clamp(100 - clamp(lengthDeviation, 0, 1) * 70 - clamp(longWordRatio * 600, 0, 40)));
+  const readability = Math.round(Math.min(evidenceCap, clamp(100 - clamp(lengthDeviation, 0, 1) * 70 - clamp(longWordRatio * 600, 0, 40))));
   const readabilityMetric = `${Math.round(avgUnitWords)} words per ${unitIsBullets ? "bullet" : "sentence"} · ${Math.round(longWordRatio * 100)}% long words`;
 
   // --- Structure completeness ---
   const corePoints = CORE_SECTIONS.filter((key) => presentSections.includes(key)).length * 15;
   const extraPoints = EXTRA_SECTIONS.filter((key) => presentSections.includes(key)).length * 7;
   const lengthPoints = wordCount >= 300 && wordCount <= 1500 ? 19 : (wordCount >= 150 && wordCount < 300) || (wordCount > 1500 && wordCount <= 2000) ? 10 : 0;
-  const structure = Math.round(clamp(corePoints + extraPoints + lengthPoints));
+  const structure = Math.round(Math.min(evidenceCap, clamp(corePoints + extraPoints + lengthPoints)));
   const structureMetric = `${presentSections.length} sections detected · ${wordCount.toLocaleString()} words`;
 
   const overallScore = Math.round(0.3 * ats + 0.2 * grammar + 0.25 * impact + 0.15 * readability + 0.1 * structure);
@@ -259,7 +260,8 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
   if (quantifiedRatio < 0.3 && bulletOrSentenceUnits.length >= 3) gaps.push(`${bulletOrSentenceUnits.length - quantifiedBullets} bullet${bulletOrSentenceUnits.length - quantifiedBullets === 1 ? "" : "s"} lack measurable results`);
   const missingCore = CORE_SECTIONS.filter((key) => missingSections.includes(key));
   if (missingCore.length) gaps.push(`no ${missingCore.join(", ")} section${missingCore.length === 1 ? "" : "s"} found`);
-  const explanation = `${overallScore >= 55 ? "Solid" : "Foundational"} resume: strongest areas are ${strengthsText.join(" and ") || "limited"}. Weakest area is ${weakest[0].toLowerCase()} (${Math.round(weakest[1])}/100)${gaps.length ? ` — ${gaps.slice(0, 2).join("; ")}` : ""}. All scores are calculated from the actual text of this resume.`;
+  const lengthNote = wordCount < 250 ? ` Scores are capped at ${evidenceCap}/100 because only ${wordCount} words were detected.` : "";
+  const explanation = `${overallScore >= 55 ? "Solid" : "Foundational"} resume: strongest areas are ${strengthsText.join(" and ") || "limited"}. Weakest area is ${weakest[0].toLowerCase()} (${Math.round(weakest[1])}/100)${gaps.length ? ` — ${gaps.slice(0, 2).join("; ")}` : ""}.${lengthNote} All scores are calculated from the actual text of this resume.`;
 
   const strengths = [];
   if (hasEmail) strengths.push("Contact email included");
@@ -332,7 +334,7 @@ export function analyzeResumeText({ fileName, text, pageCount = null }) {
       { label: "Writing", value: Math.round(grammar) },
       { label: "Impact", value: Math.round(impact) },
       { label: "Readability", value: Math.round(readability) },
-      { label: "Skills", value: Math.round(clamp(skillsFound.length * 8)) },
+      { label: "Skills", value: Math.round(Math.min(evidenceCap, clamp(skillsFound.length * 8))) },
       { label: "Structure", value: Math.round(structure) },
     ],
     issues: cappedIssues,

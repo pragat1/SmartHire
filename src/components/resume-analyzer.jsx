@@ -81,11 +81,31 @@ async function extractResume(file, onProgress = () => {}) {
   const extension = getExtension(file.name);
   if (extension === ".txt") return { text: new TextDecoder().decode(buffer), pageCount: null };
   if (extension === ".docx") {
-    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
-    return { text: result.value, pageCount: null };
+    try {
+      const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
+      const parsed = new DOMParser().parseFromString(result.value, "text/html");
+      const blocks = [...parsed.body.querySelectorAll("h1, h2, h3, h4, h5, h6, p, li, tr")]
+        .filter((element) => !(element.tagName === "P" && element.closest("li")))
+        .map((element) => {
+          const content = element.tagName === "TR"
+            ? [...element.querySelectorAll("th, td")].map((cell) => cell.textContent?.trim()).filter(Boolean).join(" | ")
+            : element.textContent?.trim() ?? "";
+          return element.tagName === "LI" ? `• ${content}` : content;
+        })
+        .filter(Boolean);
+      return { text: blocks.join("\n\n"), pageCount: null };
+    } catch {
+      throw new Error("This Word document could not be opened. It may be damaged or password-protected.");
+    }
   }
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
-  const document = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+  let document;
+  try {
+    document = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+  } catch (error) {
+    if (error?.name === "PasswordException") throw new Error("This PDF is password-protected. Remove its password and upload it again.");
+    throw new Error("This PDF could not be opened. It may be damaged or use an unsupported format.");
+  }
   if (document.numPages > 100) throw new Error("This PDF has more than 100 pages. Please choose a shorter resume document.");
   const pages = [];
   let ocrWorker = null;
@@ -94,34 +114,62 @@ async function extractResume(file, onProgress = () => {}) {
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       const page = await document.getPage(pageNumber);
       const content = await page.getTextContent();
-      let pageText = content.items.map((item) => "str" in item ? item.str : "").join(" ").trim();
+      const textRuns = content.items
+        .filter((item) => "str" in item && item.str.trim())
+        .map((item, index) => ({ text: item.str.trim(), x: item.transform?.[4] ?? index, y: item.transform?.[5] ?? null }));
+      let pageText;
+      if (textRuns.length && textRuns.every((item) => typeof item.y === "number")) {
+        const sortedRuns = [...textRuns].sort((left, right) => right.y - left.y || left.x - right.x);
+        const lines = [];
+        for (const run of sortedRuns) {
+          const currentLine = lines.at(-1);
+          if (currentLine && Math.abs(currentLine.y - run.y) <= 2.5) currentLine.parts.push(run.text);
+          else lines.push({ y: run.y, parts: [run.text] });
+        }
+        pageText = lines.map((line) => line.parts.join(" ")).join("\n").trim();
+      } else {
+        pageText = textRuns.map((item) => item.text).join(" ").trim();
+      }
       const wordCount = pageText.match(/[\p{L}\p{N}]+/gu)?.length ?? 0;
       if (pageText.length < 60 || wordCount < 10) {
-        usedOcr = true;
-        if (!ocrWorker) {
-          const { createWorker } = await import("tesseract.js");
-          ocrWorker = await createWorker("eng", 1, {
-            workerPath: "/vendor/tesseract/worker.min.js",
-            corePath: "/vendor/tesseract/core",
-            langPath: "/vendor/tesseract/lang",
-            gzip: true,
-            logger: (message) => {
-              if (message.status) onProgress(`${message.status}${typeof message.progress === "number" ? ` · ${Math.round(message.progress * 100)}%` : ""}`);
-            },
-          });
+        let canvas = null;
+        try {
+          if (!ocrWorker) {
+            const { createWorker } = await import("tesseract.js");
+            ocrWorker = await createWorker("eng", 1, {
+              workerPath: "/vendor/tesseract/worker.min.js",
+              corePath: "/vendor/tesseract/core",
+              langPath: "/vendor/tesseract/lang",
+              gzip: true,
+              logger: (message) => {
+                if (message.status) onProgress(`${message.status}${typeof message.progress === "number" ? ` · ${Math.round(message.progress * 100)}%` : ""}`);
+              },
+            });
+          }
+          onProgress(`Recognizing scanned page ${pageNumber} of ${document.numPages}.`);
+          const viewport = page.getViewport({ scale: 1.8 });
+          canvas = globalThis.document.createElement("canvas");
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
+          const context = canvas.getContext("2d", { alpha: false });
+          if (!context) throw new Error("This browser couldn't prepare a PDF page for text recognition.");
+          await page.render({ canvas, canvasContext: context, viewport }).promise;
+          const recognized = await ocrWorker.recognize(canvas);
+          const recognizedText = recognized.data.text.trim();
+          if (recognizedText) {
+            pageText = recognizedText;
+            usedOcr = true;
+          } else {
+            onProgress(`No text was recognized on scanned page ${pageNumber}; preserving any selectable text.`);
+          }
+        } catch {
+          onProgress(`Text recognition couldn't complete on scanned page ${pageNumber}; preserving any selectable text.`);
+        } finally {
+          if (canvas) {
+            canvas.width = 0;
+            canvas.height = 0;
+          }
         }
-        onProgress(`Recognizing scanned page ${pageNumber} of ${document.numPages}.`);
-        const viewport = page.getViewport({ scale: 1.8 });
-        const canvas = globalThis.document.createElement("canvas");
-        canvas.width = Math.ceil(viewport.width);
-        canvas.height = Math.ceil(viewport.height);
-        const context = canvas.getContext("2d", { alpha: false });
-        if (!context) throw new Error("This browser couldn't prepare a PDF page for text recognition.");
-        await page.render({ canvas, canvasContext: context, viewport }).promise;
-        const recognized = await ocrWorker.recognize(canvas);
-        pageText = recognized.data.text.trim() || pageText;
-        canvas.width = 0;
-        canvas.height = 0;
       }
       pages.push(pageText);
     }
@@ -294,7 +342,19 @@ export function ResumeAnalyzer({ onImprove }) {
   function chooseFile(nextFile) {
     const validation = validateFile(nextFile);
     setError(validation);
-    if (validation) return;
+    if (validation) {
+      setFile(null);
+      setAnalysis(null);
+      setAnalyzedSignature("");
+      analyzedSignatureRef.current = "";
+      setReviewText(null);
+      setExtractedPageCount(null);
+      setUsedOcr(false);
+      setPhase("idle");
+      setFailureStage("");
+      setAiStatus("");
+      return;
+    }
     setFile(nextFile);
     setAnalysis(null);
     setAnalyzedSignature("");
@@ -343,27 +403,32 @@ export function ResumeAnalyzer({ onImprove }) {
     setAnalyzedSignature(signature);
     analyzedSignatureRef.current = signature;
     setPhase("done");
-    void enhanceWithAi(signature, textForAnalysis, extractedPageCount, jobDescription.trim() || null);
+    void enhanceWithAi(signature, textForAnalysis, extractedPageCount, jobDescription.trim() || null, withMatch);
   }
 
-  async function enhanceWithAi(signature, resumeText, pageCount, jobDescriptionValue) {
+  async function enhanceWithAi(signature, resumeText, pageCount, jobDescriptionValue, deterministicAnalysis) {
     setAiStatus("checking");
     try {
-      const response = await fetch("/api/analyze-resume", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: file?.name ?? "Resume", resumeText: resumeText.slice(0, 45000), pageCount, jobDescription: jobDescriptionValue }) });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      let response;
+      try {
+        response = await fetch("/api/analyze-resume", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: file?.name ?? "Resume", resumeText: resumeText.slice(0, 45000), pageCount, jobDescription: jobDescriptionValue }), signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
       if (!response.ok) { if (signature === analyzedSignatureRef.current) setAiStatus("unavailable"); return; }
       const payload = await response.json().catch(() => ({}));
       if (signature !== analyzedSignatureRef.current || !payload?.analysis) { if (signature === analyzedSignatureRef.current) setAiStatus("unavailable"); return; }
       const ai = payload.analysis;
       const explanation = typeof ai.explanation === "string" && ai.explanation.trim().length > 40 ? ai.explanation.trim() : null;
       const normalizeTitle = (title) => String(title ?? "").toLowerCase().replace(/[^a-z]/g, "");
-      setAnalysis((current) => {
-        if (!current) return current;
-        const existing = new Set((current.recommendations ?? []).map((item) => normalizeTitle(item.title)));
-        const extra = (ai.recommendations ?? []).filter((item) => item?.title && !existing.has(normalizeTitle(item.title)) && ![...existing].some((title) => title.includes(normalizeTitle(item.title)) || normalizeTitle(item.title).includes(title))).slice(0, 3).map((item) => ({ ...item, id: `ai-${item.id ?? item.title}`, source: "ai" }));
-        const narrative = explanation ?? current.explanation;
-        return { ...current, explanation: narrative, recommendations: [...(current.recommendations ?? []), ...extra] };
-      });
-      if (signature === analyzedSignatureRef.current) setAiStatus(explanation || true ? "enhanced" : "unavailable");
+      const existing = new Set((deterministicAnalysis.recommendations ?? []).map((item) => normalizeTitle(item.title)));
+      const extra = (ai.recommendations ?? []).filter((item) => item?.title && !existing.has(normalizeTitle(item.title)) && ![...existing].some((title) => title.includes(normalizeTitle(item.title)) || normalizeTitle(item.title).includes(title))).slice(0, 3).map((item) => ({ ...item, id: `ai-${item.id ?? item.title}`, source: "ai" }));
+      setAnalysis((current) => current && signature === analyzedSignatureRef.current
+        ? { ...current, explanation: explanation ?? current.explanation, recommendations: [...(current.recommendations ?? []), ...extra] }
+        : current);
+      if (signature === analyzedSignatureRef.current) setAiStatus(explanation || extra.length ? "enhanced" : "unavailable");
     } catch {
       if (signature === analyzedSignatureRef.current) setAiStatus("unavailable");
     }
@@ -381,7 +446,7 @@ export function ResumeAnalyzer({ onImprove }) {
     const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${(file?.name || "resume").replace(/\.[^.]+$/, "")}-analysis.txt`; anchor.click(); URL.revokeObjectURL(url);
   }
 
-  const headerAction = analysis ? <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={downloadReport}><Download /> Download Report</Button><Button size="sm" onClick={runAnalysis} disabled={!canAnalyze}><RefreshCw /> {isStale ? "Re-analyze" : "Refresh analysis"}</Button></div> : <Button variant="outline" size="sm" onClick={() => setHowItWorks(true)}><CircleHelp /> How it works?</Button>;
+  const headerAction = analysis ? <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={downloadReport} disabled={isStale} title={isStale ? "Re-analyze to download an up-to-date report." : undefined}><Download /> Download Report</Button><Button size="sm" onClick={runAnalysis} disabled={!canAnalyze}><RefreshCw /> {isStale ? "Re-analyze" : "Refresh analysis"}</Button></div> : <Button variant="outline" size="sm" onClick={() => setHowItWorks(true)}><CircleHelp /> How it works?</Button>;
   const clearResume = () => { setFile(null); setAnalysis(null); setAnalyzedSignature(""); analyzedSignatureRef.current = ""; setReviewText(null); setExtractedPageCount(null); setUsedOcr(false); setError(""); setFailureStage(""); setPhase("idle"); setAiStatus(""); setJobDescription(""); setAddingJobDescription(false); };
   const resumePicker = <input ref={inputRef} type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={onFileInput} className="sr-only" />;
   const resumeWordCount = reviewText?.match(/[\p{L}\p{N}][\p{L}\p{N}+#.\-/]*/gu)?.length ?? 0;
